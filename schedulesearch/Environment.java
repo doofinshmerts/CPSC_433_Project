@@ -38,6 +38,7 @@ public class Environment
     int best_score = 2000000000;
 
     // Environment DATA #####################################################################################
+    String dataset_name;
     // the arraylist of lectures 
     ArrayList<Lecture> lectures = new ArrayList<Lecture>();
     // the arraylist of tutorials

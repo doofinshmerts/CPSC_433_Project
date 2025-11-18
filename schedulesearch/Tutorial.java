@@ -6,6 +6,7 @@ public class Tutorial
 {
     int id; // the unique id of this tutorial
     boolean is_al; // is this lecture an active learning tutorial
+    boolean is_evng; // is this an evening lecture
     int lec_id; // the id of the associated lecture of this tutorial
     // holds the incompatible lectures/tutorials of this lecture (if hashmap contains key: id, then the lecture/tutorial corresponding to this id is incompatible)
     HashMap<Integer, Boolean> not_compatible = new HashMap<Integer, Boolean>();
