@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Iterator;
 import java.util.ArrayList;
 
@@ -68,8 +69,6 @@ public final class InputParser
             System.out.println("Could not get dataset name from file: " + input_file);
             return false;
         }
-
-        System.out.println("dataset name: " + name);
         env.dataset_name = name;
 
         // Get the Lecture Slots ###########################################################################################
@@ -79,13 +78,6 @@ public final class InputParser
             System.out.println("Could not get lecture slots from file: " + input_file);
             return false;
         }
-        
-
-        System.out.println("\nLecture slots:\nsize: " + lecture_slots.size());
-        for(Slot elm : lecture_slots.values())
-        {
-            elm.PrintSlot();
-        }
         env.lecture_slots = lecture_slots;
 
         // Get the Tutorial Slots #############################################################################################
@@ -94,12 +86,6 @@ public final class InputParser
         {
             System.out.println("Could not get tutorial slots from file: " + input_file);
             return false;
-        }
-
-        System.out.println("\nTutorial slots:\nsize: " + tutorial_slots.size());
-        for(Slot elm : tutorial_slots.values())
-        {
-            elm.PrintSlot();
         }
         env.tutorial_slots = tutorial_slots;
 
@@ -136,7 +122,6 @@ public final class InputParser
             }
         }
         env.num_tutorials = count;
-
 
         // Convert TutorialData and lectureData to Tutorials and Lectures #########################################################################################
         
@@ -183,7 +168,93 @@ public final class InputParser
             }
         }
 
-        // Print the Lectures and Tutorials ####################################################################################################
+        // Parse Not Compatible ##################################################################################################################
+        if(!ParseNotCompatible(bufferedReader, env.lectures, env.tutorials, lec_tut_data))
+        {
+            System.out.println("Could not get not compatible data from file: " + input_file);
+            return false;
+        }
+
+        // Parse Unwanted ################################################################################################################################
+        if(!ParseUnwanted(bufferedReader, env.lectures, env.tutorials, lec_tut_data, env.tutorial_slots, env.lecture_slots))
+        {
+            System.out.println("Could not get unwanted data from file: " + input_file);
+            return false;
+        }
+
+        // Parse Preferences #################################################################################################################################
+        if(!ParsePreferences(bufferedReader, env.lectures, env.tutorials, lec_tut_data, env.tutorial_slots, env.lecture_slots))
+        {
+            System.out.println("Could not get preferences data from file: " + input_file);
+            return false;
+        }
+
+        // Parse Pair #################################################################################################################################################
+        ArrayList<Pair> pairs = new ArrayList<Pair>();
+        if(!ParsePairs(bufferedReader, lec_tut_data, pairs))
+        {
+            System.out.println("Could not get preferences data from file: " + input_file);
+            return false;
+        }
+        
+        // convert the array list to an array
+        env.pairs = new Pair[pairs.size()];
+        for(int i = 0; i < pairs.size(); i++)
+        {
+            env.pairs[i] = pairs.get(i);
+        }
+
+        // Parse Partial Assignments ######################################################################################################################################
+        ArrayList<UnwantedPair> part_assign_lec = new ArrayList<UnwantedPair>();
+        ArrayList<UnwantedPair> part_assign_tut = new ArrayList<UnwantedPair>();
+        if(!ParsePartialAssignments(bufferedReader, lec_tut_data, part_assign_tut, part_assign_lec))
+        {
+            System.out.println("Could not get unwanted data from file: " + input_file);
+            return false;
+        }
+
+        // Print the results of the parse 
+        PrintParseResults(env, part_assign_lec, part_assign_tut);
+        
+        // close the file reader and file buffer
+        try{
+            reader.close();
+            bufferedReader.close();
+        } catch (IOException e)
+        {
+            System.out.println("could not close buffered reader");
+        }
+        System.out.println("Finished loading from file: " + input_file);
+
+        return true;
+    }
+
+    /**
+     * prints all the information obtained from parsing the file
+     * @param env: the environment information
+     * @param part_assign_lec: the partial assignments of lectures
+     * @param part_assign_tut: the partial assignments of tutorials
+     */
+    private static void PrintParseResults(Environment env, ArrayList<UnwantedPair> part_assign_lec, ArrayList<UnwantedPair> part_assign_tut)
+    {
+        // print the name of the data set
+        System.out.println("dataset name: " + env.dataset_name);
+        
+        // print the lecture slots
+        System.out.println("\nLecture slots:\nsize: " + env.lecture_slots.size());
+        for(Slot elm : env.lecture_slots.values())
+        {
+            elm.PrintSlot();
+        }
+
+        // print the tutorial slots
+        System.out.println("\nTutorial slots:\nsize: " + env.tutorial_slots.size());
+        for(Slot elm : env.tutorial_slots.values())
+        {
+            elm.PrintSlot();
+        }
+
+        // Print the Lectures and Tutorials
         System.out.println("\nLecture and Tutorial Data:\n");
         // set parent lecture number in each tutorial for backwards lookup
         for(int i = 0; i < env.num_lectures; i++)
@@ -198,13 +269,6 @@ public final class InputParser
                 env.tutorials[tuts[j]].PrintData();    
             }
             System.out.println("");
-        }
-
-        // Parse Not Compatible ##################################################################################################################
-        if(!ParseNotCompatible(bufferedReader, env.lectures, env.tutorials, lec_tut_data))
-        {
-            System.out.println("Could not get not compatible data from file: " + input_file);
-            return false;
         }
 
         // print the not compatible assignments
@@ -254,15 +318,8 @@ public final class InputParser
             
         }
 
-        // Parse Unwanted ################################################################################################################################
-        if(!ParseUnwanted(bufferedReader, env.lectures, env.tutorials, lec_tut_data, env.tutorial_slots, env.lecture_slots))
-        {
-            System.out.println("Could not get unwanted data from file: " + input_file);
-            return false;
-        }
-
-        System.out.println("\nUnwanted:\n");
         // print Unwanted
+        System.out.println("\nUnwanted:\n");
         for(int i = 0; i < env.num_lectures; i++)
         {
             env.lectures[i].PrintData();
@@ -275,7 +332,6 @@ public final class InputParser
             System.out.println("");
         }
 
-        // print Unwanted
         for(int i = 0; i < env.num_tutorials; i++)
         {
             env.tutorials[i].PrintData();
@@ -287,16 +343,455 @@ public final class InputParser
             }
             System.out.println("");
         }
-        
-        // close the file reader and file buffer
-        try{
-            reader.close();
-            bufferedReader.close();
-        } catch (IOException e)
+
+        // print preferences for lectures
+        System.out.println("\nPreferences:\n");
+        for(int i = 0; i < env.num_lectures; i++)
         {
-            System.out.println("could not close buffered reader");
+            env.lectures[i].PrintData();
+
+            for(Map.Entry<Integer, Integer> entry : env.lectures[i].preferences.entrySet())
+            {
+                System.out.print("\tvalue: " + entry.getValue() + ", ");
+                env.lecture_slots.get(entry.getKey()).PrintSlot();
+            }
+            System.out.println("");
         }
-        System.out.println("Finished loading from file: " + input_file);
+
+        // print preferences for tutorials
+        for(int i = 0; i < env.num_tutorials; i++)
+        {
+            env.tutorials[i].PrintData();
+
+            for(Map.Entry<Integer, Integer> entry : env.tutorials[i].preferences.entrySet())
+            {
+                System.out.print("\tvalue: " + entry.getValue() + ", ");
+                env.tutorial_slots.get(entry.getKey()).PrintSlot();
+            }
+            System.out.println("");
+        }
+
+        // print the pairs
+        System.out.println("\nPairs:");
+        for(int i = 0; i < env.pairs.length; i++)
+        {
+            Pair p = env.pairs[i];
+
+            System.out.println("");
+            if(p.is_lec1)
+            {
+                env.lectures[p.id1].PrintData();
+            }
+            else
+            {
+                env.tutorials[p.id1].PrintData();
+            }
+
+            if(p.is_lec2)
+            {
+                env.lectures[p.id2].PrintData();
+            }
+            else
+            {
+                env.tutorials[p.id2].PrintData();
+            }
+        }
+
+        // print the partial assignments
+        System.out.println("\nPartial assignments:");
+
+        for(int i = 0; i < part_assign_lec.size(); i++)
+        {
+            System.out.println("");
+            UnwantedPair p = part_assign_lec.get(i);
+            env.lectures[p.id].PrintData();
+            env.lecture_slots.get(p.slot_id).PrintSlot();
+        }
+
+
+        for(int i = 0; i < part_assign_tut.size(); i++)
+        {
+            System.out.println("");
+            UnwantedPair p = part_assign_tut.get(i);
+            env.tutorials[p.id].PrintData();
+            env.tutorial_slots.get(p.slot_id).PrintSlot();
+        }
+    }
+
+
+    
+    /**
+     * Parse for the unwanted slots
+     * @param bufferedReader: the file to read the data from
+     * @param lectures: the array of lectures to use
+     * @param tutorials: the array of tutorials to use
+     * @param lec_tut_data: the map of lectures and tutorials to ids
+     * @param tutorial_slots: the map of ids to tutorial slots
+     * @param lecture_slots: the map of ids to lecture slots
+     * @return: true if no errors occured while parsing the data, false otherwise
+     */
+    private static boolean ParsePartialAssignments(BufferedReader bufferedReader,  
+                                        HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, 
+                                        ArrayList<UnwantedPair> part_assign_tut,
+                                        ArrayList<UnwantedPair> part_assign_lec)
+    {
+        // read each line from the file
+        String nextLine;
+
+        // read the next line from the file
+        try{
+            nextLine = bufferedReader.readLine();
+        }catch (IOException e)
+        {
+            return false;
+        }
+
+        // load the lecture data
+        while(nextLine != null)
+        {
+            // object for holding retreved lecture data
+            UnwantedPair pair = new UnwantedPair();
+            // try to get the lecture data from the string
+            if(TryGetUnwantedPairFromLine(nextLine,lec_tut_data, pair))
+            {
+                if(pair.is_lec)
+                {
+                    part_assign_lec.add(pair);
+                }
+                else
+                {
+                    part_assign_tut.add(pair);
+                }
+            }
+            else
+            {
+                System.out.println("INPUT WARNING: (Pairs) invalid information in line: " + nextLine);
+            }
+
+            // read the next line from the file
+            try{
+                nextLine = bufferedReader.readLine();
+            }catch (IOException e)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Parse the input data for pairs 
+     * @param bufferedReader: the file to read the data from
+     * @param lectures: the array of lectures to use
+     * @param tutorials: the array of tutorials to use
+     * @param pairs: the set of pairs of lecture/tutorials to return
+     * @return: true if no errors occured while parsing the data, false otherwise
+     */ 
+    private static boolean ParsePairs(BufferedReader bufferedReader, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, ArrayList<Pair> pairs)
+    {
+        // read each line from the file
+        String nextLine;
+
+        // read the next line from the file
+        try{
+            nextLine = bufferedReader.readLine();
+        }catch (IOException e)
+        {
+            return false;
+        }
+
+        // load the lecture data
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[9])) )
+        {
+            // object for holding retreved lecture data
+            Pair pair = new Pair();
+            // try to get the lecture data from the string
+            if(TryGetPairFromLine(nextLine, lec_tut_data, pair))
+            {
+                pairs.add(pair);
+            }
+            else
+            {
+                System.out.println("INPUT WARNING: (Pairs) invalid information in line: " + nextLine);
+            }
+
+            // read the next line from the file
+            try{
+                nextLine = bufferedReader.readLine();
+            }catch (IOException e)
+            {
+                return false;
+            }
+        }
+
+        // if the next heading was not found then return false
+        if(!nextLine.contains(HEADINGS[9]))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Parse for the preferences
+     * @param bufferedReader: the file to read the data from
+     * @param lectures: the array of lectures to use
+     * @param tutorials: the array of tutorials to use
+     * @param lec_tut_data: the map of lectures and tutorials to ids
+     * @param tutorial_slots: the map of ids to tutorial slots
+     * @param lecture_slots: the map of ids to lecture slots
+     * @return: true if no errors occured while parsing the data, false otherwise 
+     */
+    private static boolean ParsePreferences(BufferedReader bufferedReader, 
+                                        Lecture[] lectures, 
+                                        Tutorial[] tutorials, 
+                                        HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, 
+                                        HashMap<Integer, Slot> tutorial_slots,
+                                        HashMap<Integer, Slot> lecture_slots)
+    {
+        // read each line from the file
+        String nextLine;
+
+        // read the next line from the file
+        try{
+            nextLine = bufferedReader.readLine();
+        }catch (IOException e)
+        {
+            return false;
+        }
+
+        // load the lecture data
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[8])) )
+        {
+            // object for holding retreved lecture data
+            Preference pref = new Preference();
+            // try to get the lecture data from the string
+            if(TryGetPreferenceFromLine(nextLine,lec_tut_data, pref))
+            {
+                if(pref.is_lec)
+                {
+                    // ensure that the slot exists
+                    if(lecture_slots.containsKey(pref.slot_id))
+                    {
+                        // add the slot and score to the preferences
+                        lectures[pref.id].preferences.put(pref.slot_id, pref.value);
+                    }
+                    else
+                    {
+                        System.out.println("INPUT WARNING: (Preferences) invalid slot in line: " + nextLine);
+                    }
+                }
+                else
+                {
+                    // ensure that the slot exists
+                    if(tutorial_slots.containsKey(pref.slot_id))
+                    {
+                        // add the slot to the unwanted set
+                        tutorials[pref.id].preferences.put(pref.slot_id, pref.value);
+                    }
+                    else
+                    {
+                        System.out.println("INPUT WARNING: (Preferences) invalid slot in line: " + nextLine);
+                    }
+                }
+            }
+            else
+            {
+                System.out.println("INPUT WARNING: (Preferences) invalid information in line: " + nextLine);
+            }
+
+            // read the next line from the file
+            try{
+                nextLine = bufferedReader.readLine();
+            }catch (IOException e)
+            {
+                return false;
+            }
+        }
+
+        // if the next heading was not found then return false
+        if(!nextLine.contains(HEADINGS[8]))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Parse the line for a lecture/tutorial, time slot, and preference value
+     * @param nectline: the line to parse for the data
+     * @param lec_tut_data: the map of lectures and tutorials to ids
+     * @param pref: the data structure to return the information in
+     * @retrun: true if a data was found, false otherwise
+     */ 
+    private static boolean TryGetPreferenceFromLine(String nextLine, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, Preference pref)
+    {
+        // split the string by ',' deliminator
+        String[] elements = nextLine.split(",");
+        
+        // there must be 4 elements (day,time,lecture/tutorial,value)
+        if(elements.length != 4)
+        {
+            return false;
+        }
+        
+        elements[0] = elements[0].strip();
+        elements[1] = elements[1].strip();
+        elements[2] = elements[2].strip();
+        elements[3] = elements[3].strip();
+
+        // for storing the slot data
+        Slot slot = new Slot();
+        
+        // get the day
+        switch(elements[0])
+        {
+            case "MO":
+                slot.day = 0;
+                break;
+            case "TU":
+                slot.day = 1;
+                break;
+            case "WE":
+                slot.day = 2;
+                break;
+            case "TR":
+                slot.day = 3;
+                break;
+            case "FR":
+                slot.day = 4;
+                break;
+            default:
+                // if the day is not found then return false
+                return false;
+        }
+        
+        // get the time
+        String[] hr_min = elements[1].split(":");
+        // there should be 2 elements
+        if(hr_min.length != 2)
+        {
+            return false;
+        }
+        hr_min[0] = hr_min[0].strip();
+        hr_min[1] = hr_min[1].strip();
+        
+        // convert the strings to numbers
+        int[] buffer = new int[1];
+        if(!GetSafeIntFromString(hr_min[0], buffer))
+        {
+            return false;
+        }
+                
+        // record the hour
+        slot.hour = buffer[0];
+        if(!GetSafeIntFromString(hr_min[1], buffer))
+        {
+            return false;
+        }
+        // record the minute
+        slot.minute = buffer[0];
+
+        // setup the slot
+        slot.SetupSlot();
+
+        // get the value
+        if(!GetSafeIntFromString(elements[3], buffer))
+        {
+            return false;
+        }
+        pref.value = buffer[0];
+
+        // check to see if this is a lecture or tutorial
+        pref.is_lec = !((elements[2].contains("TUT")) || (elements[2].contains("LAB")) );
+
+        if(pref.is_lec)
+        {
+            LectureData temp1 = new LectureData();
+            
+            // parse the strings for the data 
+            if(!TryGetLectureBasicFromLine(elements[2], temp1))
+            {
+                return false;
+            }
+
+            // get the slot id (lecture hash for lecture slot)
+            pref.slot_id = slot.lec_hash;
+
+            // get the id of the first element
+            if(lec_tut_data.containsKey(temp1.course_descriptor))
+            {
+                // already exists so get the current map of lecturData elements to get the id
+                HashMap<Integer, LectureData> temp = lec_tut_data.get(temp1.course_descriptor);
+                if(temp.containsKey(temp1.lec_num))
+                {
+                    // get the id 
+                    pref.id = temp.get(temp1.lec_num).id;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            TutorialData temp1 = new TutorialData();
+
+            // parse the strings for the data 
+            if(!TryGetTutorialBasicFromLine(elements[2], temp1))
+            {
+                return false;
+            }
+
+            // get the slot id (tutorial hash for tutorial slot)
+            pref.slot_id = slot.tut_hash;
+
+            // get the id of the second element
+            if(lec_tut_data.containsKey(temp1.course_descriptor))
+            {
+        
+                // already exists so get the current map of lecturData elements to get the id
+                HashMap<Integer, LectureData> temp = lec_tut_data.get(temp1.course_descriptor);
+                if(temp.containsKey(temp1.lec_num))
+                {
+            
+                    // get the array of tutorials
+                    ArrayList<TutorialData> tuts = temp.get(temp1.lec_num).tutorials;
+
+                    // find the tutorial with the same tutorial number and record its number
+                    for(TutorialData tut: tuts)
+                    {
+                        pref.id = -1;
+                        if(tut.tut_num == temp1.tut_num)
+                        {
+                            pref.id = tut.id;
+                            break;
+                        }
+                    }
+                    // make sure that the id was found
+                    if(pref.id == -1)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
 
         return true;
     }
@@ -306,6 +801,7 @@ public final class InputParser
      * @param bufferedReader: the file to read the data from
      * @param lectures: the array of lectures to use
      * @param tutorials: the array of tutorials to use
+     * @param lec_tut_data: the map of lectures and tutorials to ids
      * @param tutorial_slots: the map of ids to tutorial slots
      * @param lecture_slots: the map of ids to lecture slots
      * @return: true if no errors occured while parsing the data, false otherwise
@@ -388,6 +884,10 @@ public final class InputParser
 
     /**
      * Parse the line for a lecture/tutorial and a time slot
+     * @param nectline: the line to parse for the data
+     * @param lec_tut_data: the map of lectures and tutorials to ids
+     * @param pair: the pair data structure to return the information in
+     * @retrun: true if a pair was found, false otherwise
      */ 
     private static boolean TryGetUnwantedPairFromLine(String nextLine, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, UnwantedPair pair)
     {
@@ -1686,7 +2186,9 @@ public final class InputParser
         {
             return false;
         }
-       
+        hr_min[0] = hr_min[0].strip();
+        hr_min[1] = hr_min[1].strip();
+
         // convert the strings to numbers
         int[] buffer = new int[1];
         if(!GetSafeIntFromString(hr_min[0], buffer))
@@ -1701,7 +2203,7 @@ public final class InputParser
             return false;
         }
         // record the minute
-        return_slot.min = buffer[0];
+        return_slot.minute = buffer[0];
 
         // setup the slot
         return_slot.SetupSlot();
@@ -1759,6 +2261,8 @@ public final class InputParser
         {
             return false;
         }
+        hr_min[0] = hr_min[0].strip();
+        hr_min[1] = hr_min[1].strip();
 
         // convert the strings to numbers
         int[] buffer = new int[1];
@@ -1774,8 +2278,8 @@ public final class InputParser
             return false;
         }
         // record the minute
-        return_slot.min = buffer[0];
-        
+        return_slot.minute = buffer[0];
+
         // get the lecturemax value
         if(!GetSafeIntFromString(elements[2], buffer))
         {
@@ -1806,26 +2310,34 @@ public final class InputParser
         return true;
     }
 
-    private static boolean GetSafeIntFromString(String input_string, int[] float_return)
+    private static boolean GetSafeIntFromString(String input_string, int[] int_return)
     {
         // check that the given array is not null and has at least one index for assigning values
-        if(float_return == null || float_return.length == 0)
+        if(int_return == null || int_return.length == 0)
         {
             return false;
         }
 
         // try to get an integer from the string
         try{
-            float_return[0] = Integer.parseInt(input_string);
+            int_return[0] = Integer.parseInt(input_string);
             // if the string was a float then return the float by reference and return true
             return true;
         }catch(NumberFormatException e)
         {
             // if the string was not a float then return false and an error message to the user
-            float_return[0] = -1;
+            int_return[0] = -1;
             return false;
         }
     }
+}
+
+class Preference
+{
+    boolean is_lec; // is this a lecture
+    int id; // the id of the lecture/tutorial
+    int slot_id; // the id of the slot
+    int value; // the preference value
 }
 
 class UnwantedPair
@@ -1833,7 +2345,6 @@ class UnwantedPair
     boolean is_lec; // is this a lecture
     int id; // the id of the lecture/tutorial
     int slot_id; // the id of the slot
-
 }
 
 

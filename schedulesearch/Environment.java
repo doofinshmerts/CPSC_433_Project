@@ -49,7 +49,7 @@ public class Environment
     // the arraylist of tutorials
     Tutorial[] tutorials;
     // the array of pairs used to implement Pair
-    ArrayList<Pair> pairs = new ArrayList<Pair>();
+    Pair[] pairs;
     // the lecture slots
     HashMap<Integer, Slot> lecture_slots = new HashMap<Integer, Slot>();
     // the tutorial slots
