@@ -1,5 +1,6 @@
 package schedulesearch;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * The Environment class holds all the un-changing information for the search
@@ -39,16 +40,20 @@ public class Environment
 
     // Environment DATA #####################################################################################
     String dataset_name;
+    // the number of lectures that need assigning
+    int num_lectures;
+    // the number of tutorials that need assigning
+    int num_tutorials;
     // the arraylist of lectures 
-    ArrayList<Lecture> lectures = new ArrayList<Lecture>();
+    Lecture[] lectures;
     // the arraylist of tutorials
-    ArrayList<Tutorial> tutorials = new ArrayList<Tutorial>();
+    Tutorial[] tutorials;
     // the array of pairs used to implement Pair
     ArrayList<Pair> pairs = new ArrayList<Pair>();
     // the lecture slots
-    ArrayList<Slot> lectureSlots = new ArrayList<Slot>();
+    HashMap<Integer, Slot> lecture_slots = new HashMap<Integer, Slot>();
     // the tutorial slots
-    ArrayList<Slot> tutorialSlots = new ArrayList<Slot>();
+    HashMap<Integer, Slot> tutorial_slots = new HashMap<Integer, Slot>();
 
     public Environment()
     {
