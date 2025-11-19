@@ -112,17 +112,10 @@ public final class InputParser
             return false;
         }
 
-        System.out.println("\nLecture data:\nsize: " + lec_tut_data.size());
-
         int count = 0;
         for(HashMap<Integer, LectureData> elm : lec_tut_data.values())
         {
-            System.out.println("");
             count += elm.size();
-            for(LectureData elem : elm.values())
-            {
-                elem.PrintData();
-            }
         }
         env.num_lectures = count;
         
@@ -134,19 +127,12 @@ public final class InputParser
         }
 
         count = 0;
-        System.out.println("\nTutorial data:\nsize: " + lec_tut_data.size());
         for(HashMap<Integer, LectureData> elm : lec_tut_data.values())
         {
-            System.out.println("");
             for(LectureData elem : elm.values())
             {
-                elem.PrintData();
                 ArrayList<TutorialData> temp = elem.tutorials;
                 count += temp.size();
-                for(TutorialData item: temp)
-                {
-                    item.PrintData();
-                } 
             }
         }
         env.num_tutorials = count;
@@ -197,7 +183,7 @@ public final class InputParser
             }
         }
 
-        // Print the Lectures and Tutorials
+        // Print the Lectures and Tutorials ####################################################################################################
         System.out.println("\nLecture and Tutorial Data:\n");
         // set parent lecture number in each tutorial for backwards lookup
         for(int i = 0; i < env.num_lectures; i++)
@@ -208,8 +194,98 @@ public final class InputParser
 
             for(int j = 0; j < tuts.length; j++)
             {
+                System.out.print("\t");
                 env.tutorials[tuts[j]].PrintData();    
             }
+            System.out.println("");
+        }
+
+        // Parse Not Compatible ##################################################################################################################
+        if(!ParseNotCompatible(bufferedReader, env.lectures, env.tutorials, lec_tut_data))
+        {
+            System.out.println("Could not get not compatible data from file: " + input_file);
+            return false;
+        }
+
+        // print the not compatible assignments
+        System.out.println("\nNot compatible data from Lectures:\n");
+        // set parent lecture number in each tutorial for backwards lookup
+        for(int i = 0; i < env.num_lectures; i++)
+        {
+            // get the ids of the tutorials associated with this lecture
+            env.lectures[i].PrintData();
+
+            for(Integer id : env.lectures[i].not_compatible_lec)
+            {
+                System.out.print("\t");
+                env.lectures[id].PrintData();
+            }
+
+            for(Integer id : env.lectures[i].not_compatible_tut)
+            {
+                System.out.print("\t");
+                env.tutorials[id].PrintData();
+            }
+
+            System.out.println("");
+            
+        }
+        // print the not compatible assignments
+        System.out.println("\nNot compatible data from Tutorials:\n");
+        // set parent lecture number in each tutorial for backwards lookup
+        for(int i = 0; i < env.num_tutorials; i++)
+        {
+            // get the ids of the tutorials associated with this lecture
+            env.tutorials[i].PrintData();
+
+            for(Integer id : env.tutorials[i].not_compatible_lec)
+            {
+                System.out.print("\t");
+                env.lectures[id].PrintData();
+            }
+
+            for(Integer id : env.tutorials[i].not_compatible_tut)
+            {
+                System.out.print("\t");
+                env.tutorials[id].PrintData();
+            }
+
+            System.out.println("");
+            
+        }
+
+        // Parse Unwanted ################################################################################################################################
+        if(!ParseUnwanted(bufferedReader, env.lectures, env.tutorials, lec_tut_data, env.tutorial_slots, env.lecture_slots))
+        {
+            System.out.println("Could not get unwanted data from file: " + input_file);
+            return false;
+        }
+
+        System.out.println("\nUnwanted:\n");
+        // print Unwanted
+        for(int i = 0; i < env.num_lectures; i++)
+        {
+            env.lectures[i].PrintData();
+
+            for(Integer id : env.lectures[i].unwanted)
+            {
+                System.out.print("\t");
+                env.lecture_slots.get(id).PrintSlot();
+            }
+            System.out.println("");
+        }
+
+        // print Unwanted
+        for(int i = 0; i < env.num_tutorials; i++)
+        {
+            env.tutorials[i].PrintData();
+
+            for(Integer id : env.tutorials[i].unwanted)
+            {
+                System.out.print("\t");
+                env.tutorial_slots.get(id).PrintSlot();
+            }
+            System.out.println("");
         }
         
         // close the file reader and file buffer
@@ -224,6 +300,681 @@ public final class InputParser
 
         return true;
     }
+
+    /**
+     * Parse for the unwanted slots
+     * @param bufferedReader: the file to read the data from
+     * @param lectures: the array of lectures to use
+     * @param tutorials: the array of tutorials to use
+     * @param tutorial_slots: the map of ids to tutorial slots
+     * @param lecture_slots: the map of ids to lecture slots
+     * @return: true if no errors occured while parsing the data, false otherwise
+     */
+    private static boolean ParseUnwanted(BufferedReader bufferedReader, 
+                                        Lecture[] lectures, 
+                                        Tutorial[] tutorials, 
+                                        HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, 
+                                        HashMap<Integer, Slot> tutorial_slots,
+                                        HashMap<Integer, Slot> lecture_slots)
+    {
+        // read each line from the file
+        String nextLine;
+
+        // read the next line from the file
+        try{
+            nextLine = bufferedReader.readLine();
+        }catch (IOException e)
+        {
+            return false;
+        }
+
+        // load the lecture data
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[7])) )
+        {
+            // object for holding retreved lecture data
+            UnwantedPair pair = new UnwantedPair();
+            // try to get the lecture data from the string
+            if(TryGetUnwantedPairFromLine(nextLine,lec_tut_data, pair))
+            {
+                if(pair.is_lec)
+                {
+                    // ensure that the slot exists
+                    if(lecture_slots.containsKey(pair.slot_id))
+                    {
+                        // add the slot to the unwanted set
+                        lectures[pair.id].unwanted.add(pair.slot_id);
+                    }
+                    else
+                    {
+                        System.out.println("INPUT WARNING: (Unwanted) invalid slot in line: " + nextLine);
+                    }
+                }
+                else
+                {
+                    // ensure that the slot exists
+                    if(tutorial_slots.containsKey(pair.slot_id))
+                    {
+                        // add the slot to the unwanted set
+                        tutorials[pair.id].unwanted.add(pair.slot_id);
+                    }
+                    else
+                    {
+                        System.out.println("INPUT WARNING: (lectures) invalid slot in line: " + nextLine);
+                    }
+                }
+            }
+            else
+            {
+                System.out.println("INPUT WARNING: (Unwanted) invalid information in line: " + nextLine);
+            }
+
+            // read the next line from the file
+            try{
+                nextLine = bufferedReader.readLine();
+            }catch (IOException e)
+            {
+                return false;
+            }
+        }
+
+        // if the next heading was not found then return false
+        if(!nextLine.contains(HEADINGS[7]))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Parse the line for a lecture/tutorial and a time slot
+     */ 
+    private static boolean TryGetUnwantedPairFromLine(String nextLine, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, UnwantedPair pair)
+    {
+        // try spliting on a ","
+        String[] elements = nextLine.split(",", 2);
+
+        // ensure that there are two elements
+        if(elements.length != 2)
+        {
+            return false;
+        }
+
+        // check to see if this is a lecture or tutorial
+        pair.is_lec = !((elements[0].contains("TUT")) || (elements[0].contains("LAB")) );
+
+        // get the information for the slot
+        Slot temp2 = new Slot();
+        if(!TryGetBasicSlotFromLine(elements[1], temp2))
+        {
+            return false;
+        }
+
+
+        if(pair.is_lec)
+        {
+            LectureData temp1 = new LectureData();
+            
+            // parse the strings for the data 
+            if(!TryGetLectureBasicFromLine(elements[0], temp1))
+            {
+                return false;
+            }
+
+            // get the slot id (lecture hash for lecture slot)
+            pair.slot_id = temp2.lec_hash;
+
+            // get the id of the first element
+            if(lec_tut_data.containsKey(temp1.course_descriptor))
+            {
+                // already exists so get the current map of lecturData elements to get the id
+                HashMap<Integer, LectureData> temp = lec_tut_data.get(temp1.course_descriptor);
+                if(temp.containsKey(temp1.lec_num))
+                {
+                    // get the id 
+                    pair.id = temp.get(temp1.lec_num).id;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            TutorialData temp1 = new TutorialData();
+
+            // parse the strings for the data 
+            if(!TryGetTutorialBasicFromLine(elements[0], temp1))
+            {
+                return false;
+            }
+
+            // get the slot id (tutorial hash for tutorial slot)
+            pair.slot_id = temp2.tut_hash;
+
+            // get the id of the second element
+            if(lec_tut_data.containsKey(temp1.course_descriptor))
+            {
+                // already exists so get the current map of lecturData elements to get the id
+                HashMap<Integer, LectureData> temp = lec_tut_data.get(temp1.course_descriptor);
+                if(temp.containsKey(temp1.lec_num))
+                {
+                    // get the array of tutorials
+                    ArrayList<TutorialData> tuts = temp.get(temp1.lec_num).tutorials;
+
+                    // find the tutorial with the same tutorial number and record its number
+                    for(TutorialData tut: tuts)
+                    {
+                        pair.id = -1;
+                        if(tut.tut_num == temp1.tut_num)
+                        {
+                            pair.id = tut.id;
+                            break;
+                        }
+                    }
+                    // make sure that the id was found
+                    if(pair.id == -1)
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Parse the input file for the not compatible data
+     * @param bufferedReader: the file to read the data from
+     * @param lectures: the array of lectures to use
+     * @param tutorials: the array of tutorials to use
+     * @param lec_tut_data: the map between lectures and tutorials needed for the not compatible assignments
+     * @return: true if no errors occured while parsing the data, false otherwise
+     */ 
+    private static boolean ParseNotCompatible(BufferedReader bufferedReader, Lecture[] lectures,Tutorial[] tutorials, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
+    {
+        // read each line from the file
+        String nextLine;
+
+        // read the next line from the file
+        try{
+            nextLine = bufferedReader.readLine();
+        }catch (IOException e)
+        {
+            return false;
+        }
+
+        // load the lecture data
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[6])) )
+        {
+            // object for holding retreved lecture data
+            Pair pair = new Pair();
+            // try to get the lecture data from the string
+            if(TryGetPairFromLine(nextLine, lec_tut_data, pair))
+            {
+                if(pair.is_lec1)
+                {
+                    if(pair.is_lec2)
+                    {
+                        // 1:lecture, 2:lecture
+                        lectures[pair.id1].not_compatible_lec.add(pair.id2);
+                        lectures[pair.id2].not_compatible_lec.add(pair.id1);
+                    }
+                    else
+                    {   
+                        // 1:lecture, 2:tutorial
+                        lectures[pair.id1].not_compatible_tut.add(pair.id2);
+                        tutorials[pair.id2].not_compatible_lec.add(pair.id1);
+                    }
+                }
+                else
+                {
+                    if(pair.is_lec2)
+                    {
+                        // 1:tutorial, 2:lecture
+                        tutorials[pair.id1].not_compatible_lec.add(pair.id2);
+                        lectures[pair.id2].not_compatible_tut.add(pair.id1);
+                    }
+                    else
+                    {
+                        // 1:tutorial, 2:tutorial
+                        tutorials[pair.id1].not_compatible_tut.add(pair.id2);
+                        tutorials[pair.id2].not_compatible_tut.add(pair.id1);
+                    }
+                }
+            }
+            else
+            {
+                System.out.println("INPUT WARNING: (Not Compatible) invalid information in line: " + nextLine);
+            }
+
+            // read the next line from the file
+            try{
+                nextLine = bufferedReader.readLine();
+            }catch (IOException e)
+            {
+                return false;
+            }
+        }
+
+        // if the next heading was not found then return false
+        if(!nextLine.contains(HEADINGS[6]))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Try to get the ids of the two lectures/tutorials in the given line
+     * @param nextLine: the string to parse for the pair of ids
+     * @param lec_tut_data: the map from tutorials and lectures to ids
+     * @param pair: the structure for returning the data in
+     * @retrun: true if a pair was found, false if not
+     */
+    private static boolean TryGetPairFromLine(String nextLine, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, Pair pair)
+    {
+        // try spliting the string on a comma
+        String[] elements = nextLine.split(",");
+
+        if(elements.length != 2)
+        {
+            return false;
+        }
+        // determine whether the elements are lectures or tutorials
+        pair.is_lec1 = !(elements[0].contains("TUT") || elements[0].contains("LAB"));
+        pair.is_lec2 = !(elements[1].contains("TUT") || elements[1].contains("LAB"));
+
+        // check the type of each 
+        if(pair.is_lec1)
+        {
+            if(pair.is_lec2)
+            {
+                if(!ParseForLecLecPair(elements[0], elements[1], pair, lec_tut_data))
+                {
+                    return false;
+                }
+            }
+            else
+            {   
+                if(!ParseForLecTutPair(elements[0], elements[1], pair, lec_tut_data))
+                {
+                    return false;
+                }
+            }
+        }
+        else
+        {
+            if(pair.is_lec2)
+            {
+                if(!ParseForTutLecPair(elements[0], elements[1], pair, lec_tut_data))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                if(!ParseForTutTutPair(elements[0], elements[1], pair, lec_tut_data))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Parse line1 and line2 for a pair of lecture ids
+     * @param line1: the first line to parse
+     * @param line2: the second line to parse
+     * @param lec_tut_data: the map from lectures and tutorials to ids
+     * @retrun: true if a pair could be found, false if not
+     */
+    private static boolean ParseForLecLecPair(String line1, String line2, Pair pair, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
+    {
+        // 1:lecture, 2:lecture
+        LectureData temp1 = new LectureData();
+        LectureData temp2 = new LectureData();
+
+        // parse the strings for the data 
+        if(!TryGetLectureBasicFromLine(line1, temp1))
+        {
+            return false;
+        }
+
+        if(!TryGetLectureBasicFromLine(line2, temp2))
+        {
+            return false;
+        }
+
+        // get the id of the first element
+        if(lec_tut_data.containsKey(temp1.course_descriptor))
+        {
+            // already exists so get the current map of lecturData elements to get the id
+            HashMap<Integer, LectureData> temp = lec_tut_data.get(temp1.course_descriptor);
+            if(temp.containsKey(temp1.lec_num))
+            {
+                // get the id 
+                pair.id1 = temp.get(temp1.lec_num).id;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        // get the id of the second element
+        if(lec_tut_data.containsKey(temp2.course_descriptor))
+        {
+            // already exists so get the current map of lecturData elements to get the id
+            HashMap<Integer, LectureData> temp = lec_tut_data.get(temp2.course_descriptor);
+            if(temp.containsKey(temp2.lec_num))
+            {
+                // get the id 
+                pair.id2 = temp.get(temp2.lec_num).id;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Parse line1 and line2 for a lec tut pair ids
+     * @param line1: the first line to parse
+     * @param line2: the second line to parse
+     * @param lec_tut_data: the map from lectures and tutorials to ids
+     * @retrun: true if a pair could be found, false if not
+     */
+    private static boolean ParseForLecTutPair(String line1, String line2, Pair pair, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
+    {
+        // 1:lecture, 2:lecture
+        LectureData temp1 = new LectureData();
+        TutorialData temp2 = new TutorialData();
+        System.out.println(line1 + " " + line2);
+
+        // parse the strings for the data 
+        if(!TryGetLectureBasicFromLine(line1, temp1))
+        {
+            return false;
+        }
+        
+        if(!TryGetTutorialBasicFromLine(line2, temp2))
+        {
+            return false;
+        }
+
+        // get the id of the first element
+        if(lec_tut_data.containsKey(temp1.course_descriptor))
+        {
+            // already exists so get the current map of lecturData elements to get the id
+            HashMap<Integer, LectureData> temp = lec_tut_data.get(temp1.course_descriptor);
+            if(temp.containsKey(temp1.lec_num))
+            {
+               // get the id 
+               pair.id1 = temp.get(temp1.lec_num).id;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        // get the id of the second element
+        if(lec_tut_data.containsKey(temp2.course_descriptor))
+        {
+            // already exists so get the current map of lecturData elements to get the id
+            HashMap<Integer, LectureData> temp = lec_tut_data.get(temp2.course_descriptor);
+            if(temp.containsKey(temp2.lec_num))
+            {
+                // get the array of tutorials
+                ArrayList<TutorialData> tuts = temp.get(temp2.lec_num).tutorials;
+
+                // find the tutorial with the same tutorial number and record its number
+                for(TutorialData tut: tuts)
+                {
+                    pair.id2 = -1;
+                    if(tut.tut_num == temp2.tut_num)
+                    {
+                        pair.id2 = tut.id;
+                        break;
+                    }
+                }
+                // make sure that the id was found
+                if(pair.id2 == -1)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Parse line1 and line2 for a tut lec pair ids
+     * @param line1: the first line to parse
+     * @param line2: the second line to parse
+     * @param lec_tut_data: the map from lectures and tutorials to ids
+     * @retrun: true if a pair could be found, false if not
+     */
+    private static boolean ParseForTutLecPair(String line1, String line2, Pair pair, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
+    {
+        // 1:lecture, 2:lecture
+        LectureData temp2 = new LectureData();
+        TutorialData temp1 = new TutorialData();
+
+        // parse the strings for the data 
+        if(!TryGetLectureBasicFromLine(line2, temp2))
+        {
+            return false;
+        }
+
+        if(!TryGetTutorialBasicFromLine(line1, temp1))
+        {
+            return false;
+        }
+
+        // get the id of the first element
+        if(lec_tut_data.containsKey(temp2.course_descriptor))
+        {
+            // already exists so get the current map of lecturData elements to get the id
+            HashMap<Integer, LectureData> temp = lec_tut_data.get(temp2.course_descriptor);
+            if(temp.containsKey(temp2.lec_num))
+            {
+               // get the id 
+               pair.id2 = temp.get(temp2.lec_num).id;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        // get the id of the second element
+        if(lec_tut_data.containsKey(temp1.course_descriptor))
+        {
+            // already exists so get the current map of lecturData elements to get the id
+            HashMap<Integer, LectureData> temp = lec_tut_data.get(temp1.course_descriptor);
+            if(temp.containsKey(temp1.lec_num))
+            {
+                // get the array of tutorials
+                ArrayList<TutorialData> tuts = temp.get(temp1.lec_num).tutorials;
+
+
+                // find the tutorial with the same tutorial number and record its number
+                for(TutorialData tut: tuts)
+                {
+                    pair.id1 = -1;
+                    if(tut.tut_num == temp1.tut_num)
+                    {
+                        pair.id1 = tut.id;
+                        break;
+                    }
+                }
+                // make sure that the id was found
+                if(pair.id1 == -1)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Parse line1 and line2 for a tut tut pair ids
+     * @param line1: the first line to parse
+     * @param line2: the second line to parse
+     * @param lec_tut_data: the map from lectures and tutorials to ids
+     * @retrun: true if a pair could be found, false if not
+     */
+    private static boolean ParseForTutTutPair(String line1, String line2, Pair pair, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
+    {
+        // 1:lecture, 2:lecture
+        TutorialData temp1 = new TutorialData();
+        TutorialData temp2 = new TutorialData();
+
+        // parse the strings for the data 
+        if(!TryGetTutorialBasicFromLine(line1, temp1))
+        {
+            return false;
+        }
+
+        if(!TryGetTutorialBasicFromLine(line2, temp2))
+        {
+            return false;
+        }
+
+        // get the id of the second element
+        if(lec_tut_data.containsKey(temp1.course_descriptor))
+        {
+            // already exists so get the current map of lecturData elements to get the id
+            HashMap<Integer, LectureData> temp = lec_tut_data.get(temp1.course_descriptor);
+            if(temp.containsKey(temp1.lec_num))
+            {
+                // get the array of tutorials
+                ArrayList<TutorialData> tuts = temp.get(temp1.lec_num).tutorials;
+
+
+                // find the tutorial with the same tutorial number and record its number
+                for(TutorialData tut: tuts)
+                {
+                    pair.id1 = -1;
+                    if(tut.tut_num == temp1.tut_num)
+                    {
+                        pair.id1 = tut.id;
+                        break;
+                    }
+                }
+                // make sure that the id was found
+                if(pair.id1 == -1)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        // get the id of the second element
+        if(lec_tut_data.containsKey(temp2.course_descriptor))
+        {
+            // already exists so get the current map of lecturData elements to get the id
+            HashMap<Integer, LectureData> temp = lec_tut_data.get(temp2.course_descriptor);
+            if(temp.containsKey(temp2.lec_num))
+            {
+                // get the array of tutorials
+                ArrayList<TutorialData> tuts = temp.get(temp2.lec_num).tutorials;
+
+
+                // find the tutorial with the same tutorial number and record its number
+                for(TutorialData tut: tuts)
+                {
+                    pair.id2 = -1;
+                    if(tut.tut_num == temp2.tut_num)
+                    {
+                        pair.id2 = tut.id;
+                        break;
+                    }
+                }
+                // make sure that the id was found
+                if(pair.id2 == -1)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        return true;
+    }
+
 
     /**
      * Parse the input file for the tutorial data
@@ -270,13 +1021,17 @@ public final class InputParser
                     }
                     else
                     {
-                        System.out.println("you are trying to add tutorial without lecture: " + temp_tut.course_descriptor + " " + temp_tut.lec_num);
+                        System.out.println("INPUT WARNING: (Tutorials) attempt to add tutorial twice: " + temp_tut.course_descriptor + " " + temp_tut.lec_num);
                     }
                 }
                 else
                 {
-                    System.out.println("you are trying to add tutorial without lecture: " + temp_tut.course_descriptor);
+                    System.out.println("INPUT WARNING: (Tutorials) attempt to add tutorial without corresponding lecture: " + temp_tut.course_descriptor);
                 }
+            }
+            else
+            {
+                System.out.println("INPUT WARNING: (lectures) invalid information in line: " + nextLine);
             }
 
             // read the next line from the file
@@ -298,6 +1053,92 @@ public final class InputParser
     } 
 
     /**
+     * takes a string and tries to convert it to basic tutorial data (course_descriptor, lecture number, tutorial number)
+     * @param line: the line to parse for the tutorial data
+     * @param lec: the tutorial data structure to return the information in
+     * @return: true if the line could be parsed for tutorial data, false otherwise
+     */
+    private static boolean TryGetTutorialBasicFromLine(String line, TutorialData tut)
+    {
+        // split the string by ',' deliminator
+        String[] elements;
+
+        // try spliting on either "TUT" or "LAB"
+        if(line.contains("TUT"))
+        {
+            elements = line.split("TUT");
+        }
+        else if(line.contains("LAB"))
+        {
+            elements = line.split("LAB");
+        }
+        else
+        {
+            return false;
+        }
+
+        elements[0] = elements[0].strip();
+        elements[1] = elements[1].strip();
+
+        // check to see if the name contains "LEC"
+        if(elements[0].contains("LEC"))
+        {
+            // split on "LEC"
+            String[] lec_info = elements[0].split("LEC");
+            // ensure that there is course descriptor and lecture number
+            if(lec_info.length != 2)
+            {
+                return false;
+            }
+
+            // get the course descriptor and lecture number
+            lec_info[0] = lec_info[0].strip();
+            lec_info[1] = lec_info[1].strip();
+
+            // record the course descriptor
+            tut.course_descriptor = lec_info[0];
+            
+            // convert the strings to a number
+            int[] buffer = new int[1];
+            if(!GetSafeIntFromString(lec_info[1], buffer))
+            {
+                return false;
+            }
+            
+            // record the lecture number
+            tut.lec_num = buffer[0];
+
+        }
+        else
+        {
+            // if it does not contain "LEC" then lecture number is 1
+            tut.lec_num = 1;
+            tut.course_descriptor = elements[0];
+        }
+
+        // get the course number and AL
+        elements = elements[1].split(",");
+
+        // there should be 2 elements
+        if(elements.length > 1)
+        {
+            return false;
+        }
+
+        // convert the strings to a number
+        int[] buffer = new int[1];
+        if(!GetSafeIntFromString(elements[0], buffer))
+        {
+            return false;
+        }
+        
+        // record the lecture number
+        tut.tut_num = buffer[0];
+
+        return true;
+    }
+
+    /**
      * takes a string and tries to convert it to tutorial data
      * @param line: the line to parse for the tutorial data
      * @param lec: the tutorial data structure to return the information in
@@ -307,6 +1148,9 @@ public final class InputParser
     {
         // split the string by ',' deliminator
         String[] elements;
+
+        // record the full name of the tutorial
+        tut.name = line.split(",")[0];
 
         // try spliting on either "TUT" or "LAB"
         if(line.contains("TUT"))
@@ -439,6 +1283,10 @@ public final class InputParser
                         temp.put(temp_lec.lec_num, temp_lec);
                         lec_tut_data.put(temp_lec.course_descriptor, temp);
                     }
+                    else
+                    {
+                        System.out.println("INPUT WARNING: (lectures) attempt to add same lecture twice: " + nextLine);
+                    }
                 }
                 else
                 {
@@ -448,6 +1296,10 @@ public final class InputParser
                     lec_tut_data.put(temp_lec.course_descriptor, temp);
 
                 }
+            }
+            else
+            {
+                System.out.println("INPUT WARNING: (lectures) invalid information in line: " + nextLine);
             }
             // read the next line from the file
             try{
@@ -468,6 +1320,62 @@ public final class InputParser
     } 
 
     /**
+     * takes a string and tries to convert it to only the basic lecture data (course_descriptor and lecture number
+     * @param line: the line to parse for the lecture information
+     * @param lec: the lecture data structure to retrun the information in
+     * @return: true if the line could be parsed for lecture data, false otherwise
+     */
+    private static boolean TryGetLectureBasicFromLine(String line, LectureData lec)
+    {
+        // split the string by ',' deliminator
+        String[] elements;
+
+        // split the line on the key word LEC
+        if(line.contains("LEC"))
+        {
+            elements = line.split("LEC");
+        }
+        else
+        {
+            return false;
+        }
+
+
+        // there must be 2 elements (course_descriptor, lecture number + AL)
+        if(elements.length != 2)
+        {
+            return false;
+        }
+
+        elements[0] = elements[0].strip();
+        elements[1] = elements[1].strip();
+
+        // record the course descriptor
+        lec.course_descriptor = elements[0];
+
+        // get the course number and AL
+        elements = elements[1].split(",");
+        
+        // there should be 2 elements
+        if(elements.length > 1)
+        {
+            return false;
+        }
+
+        // convert the strings to a number
+        int[] buffer = new int[1];
+        if(!GetSafeIntFromString(elements[0], buffer))
+        {
+            return false;
+        }
+        
+        // record the lecture number
+        lec.lec_num = buffer[0];
+
+        return true;
+    }
+
+    /**
      * takes a string and tries to convert it to lecture data
      * @param line: the line to parse for the lecture information
      * @param lec: the lecture data structure to retrun the information in
@@ -477,6 +1385,9 @@ public final class InputParser
     {
         // split the string by ',' deliminator
         String[] elements;
+
+        // record the full name of the lecture
+        lec.name = line.split(",")[0];;
 
         // split the line on the key word LEC
         if(line.contains("LEC"))
@@ -655,6 +1566,10 @@ public final class InputParser
             {
                 lecture_slots.put(temp_slot.lec_hash,temp_slot);
             }
+            else
+            {
+                System.out.println("INPUT WARNING: (lecture slots) invalid information in line: " + nextLine);
+            }
             // read the next line from the file
             try{
                 nextLine = bufferedReader.readLine();
@@ -698,7 +1613,11 @@ public final class InputParser
             Slot temp_slot = new Slot();
             if(TryGetSlotFromLine(nextLine, temp_slot))
             {
-                tutorial_slots.put(temp_slot.lec_hash,temp_slot);
+                tutorial_slots.put(temp_slot.tut_hash,temp_slot);
+            }
+            else
+            {
+                System.out.println("INPUT WARNING: (tutorial slots) invalid information in line: " + nextLine);
             }
             // read the next line from the file
             try{
@@ -718,6 +1637,77 @@ public final class InputParser
         return true;
     } 
 
+    /**
+     * takes a string and tries to convert it to basic slot information (Day and time)
+     * @param line: the line to parse for the slot information
+     * @param slot: the slot to put the return data into
+     * @return: true if the line could be parsed for slot information, false otherwise
+     */
+    private static boolean TryGetBasicSlotFromLine(String line, Slot return_slot)
+    {
+        // split the string by ',' deliminator
+        String[] elements = line.split(",");
+                
+        // there must be 5 elements (day,time,lecturemax,lecturemin,allecturemax)
+        if(elements.length < 2)
+        {
+            return false;
+        }
+       
+        elements[0] = elements[0].strip();
+        // get the day
+        switch(elements[0])
+        {
+            case "MO":
+                return_slot.day = 0;
+                break;
+            case "TU":
+                return_slot.day = 1;
+                break;
+            case "WE":
+                return_slot.day = 2;
+                break;
+            case "TR":
+                return_slot.day = 3;
+                break;
+            case "FR":
+                return_slot.day = 4;
+                break;
+            default:
+                // if the day is not found then return false
+                return false;
+        }
+       
+        // get the time
+        elements[1] = elements[1].strip();
+        String[] hr_min = elements[1].split(":");
+        // there should be 2 elements
+        if(hr_min.length != 2)
+        {
+            return false;
+        }
+       
+        // convert the strings to numbers
+        int[] buffer = new int[1];
+        if(!GetSafeIntFromString(hr_min[0], buffer))
+        {
+            return false;
+        }
+                
+        // record the hour
+        return_slot.hour = buffer[0];
+        if(!GetSafeIntFromString(hr_min[1], buffer))
+        {
+            return false;
+        }
+        // record the minute
+        return_slot.min = buffer[0];
+
+        // setup the slot
+        return_slot.SetupSlot();
+
+        return true;
+    }
 
     /**
      * takes a string and tries to convert it to a lecture slot
@@ -838,11 +1828,20 @@ public final class InputParser
     }
 }
 
+class UnwantedPair
+{
+    boolean is_lec; // is this a lecture
+    int id; // the id of the lecture/tutorial
+    int slot_id; // the id of the slot
+
+}
+
 
 class LectureData
 {
     int id; // the unique id of the lecture 
     String course_descriptor; // e.g. CPSC 433
+    String name; // the full name of the lecture
     boolean is_evng; // is this an evening lecture
     boolean is_5xx; // is this a 500 level course
     int lec_num; // e.g LEC 01 -> lec_num = 1
@@ -878,6 +1877,7 @@ class LectureData
         temp.is_5xx = is_5xx;
         temp.is_evng = is_evng;
         temp.section = section;
+        temp.name = name;
 
         temp.tutorials = new Integer[tutorials.size()];
         
@@ -897,6 +1897,7 @@ class TutorialData
 {
     int id; // the unique id of the tutorial
     String course_descriptor; // e.g. CPSC 433
+    String name; // the full name of the lecture
     boolean is_evng; // is this an evening lecture
     int lec_num; // e.g. LEC 01 -> lec_num = 1 (defualt to 1 if not included)
     int tut_num; // e.g. TUT/LAB 04 -> tut_num = 4
@@ -926,6 +1927,7 @@ class TutorialData
         temp.id = _id;
         temp.is_al = is_al;
         temp.is_evng = is_evng;
+        temp.name = name;
 
         temp.lec_num = lec_num;
         temp.tut_num = tut_num;

@@ -20,13 +20,13 @@ public class Tutorial
     String course_descriptor; // e.g. CPSC 433
     int lec_num; // e.g. LEC 01 -> lec_num = 1 (defualt to 1 if not included)
     int tut_num; // e.g. TUT/LAB 04 -> tut_num = 4
-
+    String name; // the full name of the tutorial
     /**
      * Print important data for this Tutorial
      */ 
     public void PrintData()
     {
-        System.out.print(String.format("\tTUT: %s %d %d, id: %d, lec_id: %d, ", course_descriptor, lec_num, tut_num, id, lec_id));
+        System.out.print(String.format("TUT: %s %d %d, id: %d, lec_id: %d, ", course_descriptor, lec_num, tut_num, id, lec_id));
         System.out.print(is_al);
         System.out.print(", ");
         System.out.println(is_evng); 

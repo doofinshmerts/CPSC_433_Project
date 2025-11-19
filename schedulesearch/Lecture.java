@@ -22,6 +22,7 @@ public class Lecture
 
     String course_descriptor; // e.g. CPSC 433
     int lec_num; // the lecture number
+    String name; // the full name of the lecture
 
     /**
      * Print important data for this lecture
