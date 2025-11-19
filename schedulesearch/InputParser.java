@@ -80,6 +80,17 @@ public final class InputParser
         }
         env.lecture_slots = lecture_slots;
 
+        // fill the array of lecture slots (used for quick iterating)
+        env.lec_slots_array = new Slot[env.lecture_slots.size()];
+        
+        int k = 0;
+        for(Slot slot: env.lecture_slots.values())
+        {
+            env.lec_slots_array[k] = slot;
+            slot.id = k; // who designed this 
+            k++;
+        }
+
         // Get the Tutorial Slots #############################################################################################
         HashMap<Integer, Slot> tutorial_slots = new HashMap<Integer, Slot>();
         if(!ParseTutorialSlots(bufferedReader, tutorial_slots))
@@ -88,6 +99,43 @@ public final class InputParser
             return false;
         }
         env.tutorial_slots = tutorial_slots;
+
+        // fill the array of lecture slots (used for quick iterating)
+        env.tut_slots_array = new Slot[env.tutorial_slots.size()];
+        env.tutslot_lecslot = new int[env.tut_slots_array.length][];
+
+        k = 0;
+        for(Slot slot: env.tutorial_slots.values())
+        {
+            // record the slot in the slot array
+            env.tut_slots_array[k] = slot;
+
+            // find the ids of any overlapping lectures if they exist
+            int[] temp = slot.TutSlotToOverLappingLecSlot();
+            ArrayList<Integer> lec_slots = new ArrayList<Integer>();
+
+            for(int j = 0; j < temp.length; j++)
+            {
+                // check that this lecture slot exists
+                if(env.lecture_slots.containsKey(temp[j]))
+                {
+                    // add the lecture id to the lecture slots
+                    lec_slots.add(env.lecture_slots.get(temp[j]).id);
+                }
+            }
+
+            // add the overlapping lecture slots to the array
+            temp = new int[lec_slots.size()];
+            for(int i = 0; i < temp.length; i++)
+            {
+                temp[i] = lec_slots.get(i);
+            }
+            env.tutslot_lecslot[k] = temp;
+
+            slot.id = k;
+            k++;
+        }
+
 
         // Get the Lectures ######################################################################################################
         // key is the course identifier (name and number), The key for the inner map is the lecture number 
@@ -112,14 +160,22 @@ public final class InputParser
             return false;
         }
 
+        // count the total number of tutorials
         count = 0;
+        int s_count = 0;
         for(HashMap<Integer, LectureData> elm : lec_tut_data.values())
         {
             for(LectureData elem : elm.values())
             {
                 ArrayList<TutorialData> temp = elem.tutorials;
-                count += temp.size();
+                count += temp.size();   
             }
+
+            // allocate the arrays for the section map
+            Integer[] sec = new Integer[elm.size()];
+            env.sections.put(s_count, sec);
+
+            s_count++;
         }
         env.num_tutorials = count;
 
@@ -127,15 +183,25 @@ public final class InputParser
         
         int t_count = 0;
         int l_count = 0;
-        int s_count = 0;
+        s_count = 0;
         
         env.tutorials = new Tutorial[env.num_tutorials];
         env.lectures = new Lecture[env.num_lectures];
 
+        // use for recording the 5xx level lectures
+        ArrayList<Integer> lec_5xx = new ArrayList<Integer>();
+
         for(HashMap<Integer, LectureData> elm : lec_tut_data.values())
         {
+            int i = 0; // the counter for the internal lectures within a section
             for(LectureData lec : elm.values())
             {
+                // if this is a 5xx level lecture, then record it
+                if(lec.is_5xx)
+                {
+                    lec_5xx.add(l_count);
+                }
+
                 ArrayList<TutorialData> temp = lec.tutorials;
                 for(TutorialData tut: temp)
                 {
@@ -147,19 +213,29 @@ public final class InputParser
                 } 
                 // convert this lecture data to a lecture
                 env.lectures[l_count] = lec.ConvertToLecture(l_count, s_count);
+                env.sections.get(s_count)[i] = l_count;
                 // increment the lecture count
                 l_count++;
+                i++;
             }
 
             // increment the section count
             s_count++;
         }
+
+        // put the array of 5xx level lectures in the environment
+        int[] lectures_5xx = new int[lec_5xx.size()];
+        for(int i = 0; i < lectures_5xx.length; i++)
+        {
+            lectures_5xx[i] = lec_5xx.get(i);
+        }
+        env.lectures_5xx = lectures_5xx;
         
         // set parent lecture number in each tutorial for backwards lookup
         for(int i = 0; i < env.num_lectures; i++)
         {
             // get the ids of the tutorials associated with this lecture
-            Integer[] tuts = env.lectures[i].tutorials;
+            int[] tuts = env.lectures[i].tutorials;
             int id = env.lectures[i].id;
 
             for(int j = 0; j < tuts.length; j++)
@@ -215,7 +291,21 @@ public final class InputParser
 
         // Print the results of the parse 
         PrintParseResults(env, part_assign_lec, part_assign_tut);
+
+        // Add the special constraints #########################################################################################################################################
+        // remove any lecture slots that overlap tuesdays at 11:00 to 12:30
+        // if exists add partial constraint CPSC 851 to TU 18:00
+        // if exists add partial constraint CPSC 913 to TU 18:00
+        // if exists add unwanted for any CPSC 351 to time overlapping 18:00 to 19:00
+        // if exists add unwanted for any CPSC 413 to time overlapping 18:00 to 19:00
         
+        // apply the partial assignments to the starting state #################################################################################################################
+        
+        // create an initial problem
+        s0.SetupProblem(env.num_lectures, env.num_tutorials);
+        // try getting a set of tutorials
+        int[] valid_slots = Functions.ValidLectureSlots(env, 0, s0);
+        Functions.PrintLectureSlots(valid_slots, env);
         // close the file reader and file buffer
         try{
             reader.close();
@@ -242,16 +332,27 @@ public final class InputParser
         
         // print the lecture slots
         System.out.println("\nLecture slots:\nsize: " + env.lecture_slots.size());
-        for(Slot elm : env.lecture_slots.values())
+        for(int i = 0; i < env.lec_slots_array.length; i++)
         {
-            elm.PrintSlot();
+            env.lec_slots_array[i].PrintSlot();
         }
 
         // print the tutorial slots
         System.out.println("\nTutorial slots:\nsize: " + env.tutorial_slots.size());
-        for(Slot elm : env.tutorial_slots.values())
+        for(int i = 0; i < env.tut_slots_array.length; i++)
         {
-            elm.PrintSlot();
+            env.tut_slots_array[i].PrintSlot();
+        }
+
+        // print map of tutorial slots to lecture slots
+        System.out.println("\nMap of Tutorial slots to lecture slots\n");
+        for(int i = 0; i < env.tutslot_lecslot.length; i++)
+        {
+            System.out.println("tutorial id: " + i);
+            for(int j = 0; j < env.tutslot_lecslot[i].length; j++)
+            {
+                System.out.println("\tlec id: " + env.tutslot_lecslot[i][j]);
+            }
         }
 
         // Print the Lectures and Tutorials
@@ -260,7 +361,7 @@ public final class InputParser
         for(int i = 0; i < env.num_lectures; i++)
         {
             // get the ids of the tutorials associated with this lecture
-            Integer[] tuts = env.lectures[i].tutorials;
+            int[] tuts = env.lectures[i].tutorials;
             env.lectures[i].PrintData();
 
             for(int j = 0; j < tuts.length; j++)
@@ -269,6 +370,19 @@ public final class InputParser
                 env.tutorials[tuts[j]].PrintData();    
             }
             System.out.println("");
+        }
+
+        // print the sections map
+        System.out.println("\nSections:\n");
+        int j = 0;
+        for(Integer[] elm: env.sections.values())
+        {
+            System.out.println("Section: " + j);
+            j++;
+            for(int i = 0; i < elm.length; i++)
+            {
+                System.out.println("\tId: " + elm[i]);
+            }
         }
 
         // print the not compatible assignments
@@ -327,7 +441,7 @@ public final class InputParser
             for(Integer id : env.lectures[i].unwanted)
             {
                 System.out.print("\t");
-                env.lecture_slots.get(id).PrintSlot();
+                env.lec_slots_array[id].PrintSlot();
             }
             System.out.println("");
         }
@@ -339,7 +453,7 @@ public final class InputParser
             for(Integer id : env.tutorials[i].unwanted)
             {
                 System.out.print("\t");
-                env.tutorial_slots.get(id).PrintSlot();
+                env.tut_slots_array[id].PrintSlot();
             }
             System.out.println("");
         }
@@ -838,7 +952,7 @@ public final class InputParser
                     if(lecture_slots.containsKey(pair.slot_id))
                     {
                         // add the slot to the unwanted set
-                        lectures[pair.id].unwanted.add(pair.slot_id);
+                        lectures[pair.id].unwanted.add(lecture_slots.get(pair.slot_id).id);
                     }
                     else
                     {
@@ -851,11 +965,11 @@ public final class InputParser
                     if(tutorial_slots.containsKey(pair.slot_id))
                     {
                         // add the slot to the unwanted set
-                        tutorials[pair.id].unwanted.add(pair.slot_id);
+                        tutorials[pair.id].unwanted.add(tutorial_slots.get(pair.slot_id).id);
                     }
                     else
                     {
-                        System.out.println("INPUT WARNING: (lectures) invalid slot in line: " + nextLine);
+                        System.out.println("INPUT WARNING: (Unwanted) invalid slot in line: " + nextLine);
                     }
                 }
             }
@@ -1218,7 +1332,6 @@ public final class InputParser
         // 1:lecture, 2:lecture
         LectureData temp1 = new LectureData();
         TutorialData temp2 = new TutorialData();
-        System.out.println(line1 + " " + line2);
 
         // parse the strings for the data 
         if(!TryGetLectureBasicFromLine(line1, temp1))
@@ -1531,7 +1644,7 @@ public final class InputParser
             }
             else
             {
-                System.out.println("INPUT WARNING: (lectures) invalid information in line: " + nextLine);
+                System.out.println("INPUT WARNING: (Tutorials) invalid information in line: " + nextLine);
             }
 
             // read the next line from the file
@@ -2390,7 +2503,7 @@ class LectureData
         temp.section = section;
         temp.name = name;
 
-        temp.tutorials = new Integer[tutorials.size()];
+        temp.tutorials = new int[tutorials.size()];
         
         for(int i = 0; i < tutorials.size(); i++)
         {

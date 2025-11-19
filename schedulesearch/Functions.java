@@ -1,5 +1,5 @@
 package schedulesearch;
-
+import java.util.HashSet;
 /**
  * the Functions class contains all the static functions needed for the And Tree search
  * This class was created so that these functions are available to the inputParser and Main classes as well
@@ -8,9 +8,9 @@ public final class Functions
 {
     /**
      * MinBoundScore calculates the minimum score of a problem that cannot do better than
-     * @param pr: the problem to evaluate
-     * @param env: the environment with the penalties and weights
-     * @return: the score of the problem
+     * @param pr the problem to evaluate
+     * @param env the environment with the penalties and weights
+     * @return the score of the problem
      */ 
     public static int MinBoundScore(Problem pr, Environment env)
     {
@@ -22,8 +22,8 @@ public final class Functions
 
     /**
      * Solvable determines if problem pr is solvable
-     * @param pr: the problem to check
-     * @return: true if pr is solvable, false otherwise
+     * @param pr the problem to check
+     * @return true if pr is solvable, false otherwise
      */ 
     public static boolean Solvable(Problem pr)
     {
@@ -37,9 +37,9 @@ public final class Functions
     /**
      * Fbound determines if the leaf represented by this problem can be pruned from the search tree
      * It does this by determining if there is no possible way for this problem to achive a better score than the one that has already been found
-     * @param pr: the problem to check
-     * @param env: the environment that stores the best score so far
-     * @return: true if this problem cannot give a better solution, false otherwise
+     * @param pr the problem to check
+     * @param env the environment that stores the best score so far
+     * @return true if this problem cannot give a better solution, false otherwise
      */ 
     public static boolean FBound(Problem pr, Environment env)
     {
@@ -51,8 +51,8 @@ public final class Functions
 
     /**
      * Depth gets the depth of a problem in the tree
-     * @param pr: the problem to evaluate
-     * @return: the depth of the problem (0 is the root of the tree)
+     * @param pr the problem to evaluate
+     * @return the depth of the problem (0 is the root of the tree)
      */ 
     public static int Depth(Problem pr)
     {
@@ -64,9 +64,9 @@ public final class Functions
 
     /**
      * Eval calculates the score of a problem assignment
-     * @param pr: the problem to score
-     * @param env: the environment with the scoring parameters
-     * @return: the score of the problem
+     * @param pr the problem to score
+     * @param env the environment with the scoring parameters
+     * @return the score of the problem
      */
     public static int Eval(Problem pr, Environment env)
     {
@@ -99,10 +99,10 @@ public final class Functions
 
     /**
      * ValidLectureSlots finds all valid slots for a given lecture
-     * @param env: the environment
-     * @param lec_id: the unique id of the lecture 
-     * @param pr: the problem that has the existing lecture and tutorial assignments
-     * @return: an array of unique lecture slot id's
+     * @param env the environment
+     * @param lec_id the unique id of the lecture 
+     * @param pr the problem that has the existing lecture and tutorial assignments
+     * @return an array of unique lecture slot id's
      */ 
     public static int[] ValidLectureSlots(Environment env, int lec_id, Problem pr)
     {
@@ -117,15 +117,154 @@ public final class Functions
         // if lecture l is a 5XX level course and there is another 5XX level lecture assigned to slot s then remove s from consideration
         // return the id's of all remaining slots
 
-        return new int[0];
+        // get the information about the lecture
+        Lecture lecture = env.lectures[lec_id];
+        // this hashset will store the indices of all the slots that are not valid
+        HashSet<Integer> slot_mask = new HashSet<Integer>();
+
+        // Find over capacity slots ####################################################################################################################
+        // initialize an array for holding the slots fill values
+        int[] slot_fill = new int[env.lec_slots_array.length];
+        for(int i = 0; i < slot_fill.length; i++)
+        {
+            slot_fill[i] = 0;
+        }
+
+        // count the number of elements in each slot
+        for(int i = 0; i < pr.lectures.length; i++)
+        {
+            if(pr.lectures[i] != -1)
+            {
+                slot_fill[pr.lectures[i]]++;
+            }
+        }
+
+        // if the slot is at capacity then add it to the mask
+        for(int i = 0; i < slot_fill.length; i++)
+        {
+            if(slot_fill[i] >= env.lec_slots_array[i].max)
+            {
+                // this lecture slot does not have enough spaces for this lecture
+                slot_mask.add(i);
+                continue;
+            }
+            else if(lecture.is_al && (slot_fill[i] >= env.lec_slots_array[i].almax))
+            {
+                // this lecture slot does not have enough active learning spaces for this active learning lecture
+                slot_mask.add(i);
+                continue;
+            }
+
+            if(lecture.is_evng && !env.lec_slots_array[i].is_evng)
+            {
+                // this is not an evening lecture slot
+                slot_mask.add(i);
+            }
+        }
+    
+        // find slots of the corresponding tutorials ##########################################################################################################
+        for(int i = 0; i < lecture.tutorials.length; i++)
+        {
+            // the id of the tutorial
+            int id = pr.tutorials[lecture.tutorials[i]];
+            if(id != -1)
+            {
+                // add the ids of the lectures that overlap this tutorial
+                for(int j = 0; j < env.tutslot_lecslot[id].length; j++)
+                    {
+                        slot_mask.add(env.tutslot_lecslot[id][j]);
+                    }
+            }            
+        }
+
+        // find not compatible slot assignments
+        // loop through the not compatible lectures/tutorials and get their slot assignments
+        for(Integer lec: lecture.not_compatible_lec)
+        {
+            // lec is the id of the not compatible lecture, use this to get the slot assigned to lec
+            int slot_id = pr.lectures[lec];
+            if(slot_id != -1)
+            {
+                // add the id of this slot
+                slot_mask.add(slot_id);
+            }
+        }
+
+        for(Integer tut: lecture.not_compatible_tut)
+        {
+            // the id of the tutorial
+            int id = pr.tutorials[tut];
+            if(id != -1)
+            {
+                // add the ids of the lectures that overlap this tutorial
+                for(int j = 0; j < env.tutslot_lecslot[id].length; j++)
+                {
+                    slot_mask.add(env.tutslot_lecslot[id][j]);
+                }
+            }            
+        }
+
+        // find the Unwanted slots #################################################################################################################################
+        for(Integer slot_id: lecture.unwanted)
+        {
+            slot_mask.add(slot_id);
+        }
+        
+        // find other 5xx level lectures ############################################################################################################################
+        for(int i = 0; i < env.lectures_5xx.length; i++)
+        {
+            int id = pr.lectures[env.lectures_5xx[i]];
+            if(id != -1)
+            {
+                slot_mask.add(id);
+            }
+        }
+
+        // filter the array list
+        int num_slots = env.lec_slots_array.length - slot_mask.size();
+        if(num_slots <= 0)
+        {
+            return null;
+        }
+
+        int[] valid_slots = new int[num_slots];
+        int j = 0;
+        for(int i = 0; i < env.lec_slots_array.length; i++)
+        {
+            if(!slot_mask.contains(i))
+            {
+                valid_slots[j] = i;
+                j++;
+            }
+        }
+
+        return valid_slots;
+    }
+
+    /**
+     * print the list of lecture slots
+     * @param ids the ids to print
+     * @param env the environment variables
+     */
+    public static void PrintLectureSlots(int[] ids, Environment env)
+    {
+        if(ids == null)
+        {
+            return;
+        }
+        System.out.println("\nLecture slots:\n");
+        for(int i = 0; i < ids.length; i++)
+        {
+            env.lec_slots_array[ids[i]].PrintSlot();
+        }
     }
 
     /**
      * ValidTutSlots finds all valid slots for a given tutorial
-     * @param env: the environment
-     * @param tut_id: the unique tutorial id of the tutorial
-     * @param pr: the problem that has the existing lecture and tutorial assignments
-     * @return: an array of unique tutorial slot id's
+     * @param env the environment
+     * @param tut_id the unique tutorial id of the tutorial
+     * @param pr the problem that has the existing lecture and tutorial assignments
+     * @return an array of unique tutorial slot id's
      */
     public static int[] ValidTutSlots(Environment env, int tut_id, Problem pr)
     {

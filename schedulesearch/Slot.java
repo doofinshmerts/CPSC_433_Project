@@ -44,6 +44,29 @@ public class Slot
     }
 
     /**
+     * Treat this as a tutorial slot, get the lecture hashes of lecture slots that overlap this time
+     * This should only be called for friday tutorial slots
+     * @return: array of slot lecture hashes (not ids, do not get this confused)
+     */
+    public int[] TutSlotToOverLappingLecSlot()
+    {
+        if(day == 4)
+        {
+            // a friday tutorial slot covers two consecutive lecture slots
+            int[] values = new int[2];
+            values[0] = lec_hash;
+            values[1] = lec_hash + 60; 
+            return values;
+        }
+        else
+        {
+            int[] values = new int[1];
+            values[0] = lec_hash;
+            return values;
+        }
+    }
+
+    /**
      * Get the unique hash for this slot, this number will represent the time in minutes from monday 0:00
      * This is used to see if slots effectively equivalent (e.g. MON 9:00 and WED 9:00 are the same slot)
      * @param is_lecslot: is this a lecture slot, then MWF will map to the same time, TTr will map to the same time

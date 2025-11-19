@@ -11,7 +11,7 @@ public class Lecture
     boolean is_5xx; // is this a 500 level lecture
     boolean is_evng; // is this an evening lecture
     int section; // the section that this lecture belongs to
-    Integer[] tutorials; // the id's of the tutorials that belong to this lecture
+    int[] tutorials; // the id's of the tutorials that belong to this lecture
     // holds the incompatible lectures/tutorials of this lecture (if hashmap contains key: id, then the lecture/tutorial corresponding to this id is incompatible)
     HashSet<Integer> not_compatible_lec = new HashSet<Integer>(); // for lectures
     HashSet<Integer> not_compatible_tut = new HashSet<Integer>(); // for tutorials

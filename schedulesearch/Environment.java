@@ -40,20 +40,35 @@ public class Environment
 
     // Environment DATA #####################################################################################
     String dataset_name;
+    
     // the number of lectures that need assigning
     int num_lectures;
     // the number of tutorials that need assigning
     int num_tutorials;
+    
     // the arraylist of lectures 
     Lecture[] lectures;
+    // the array of lectures at 5xx level
+    int[] lectures_5xx;
+    // the map from sections to lecture ids
+    HashMap<Integer, Integer[]> sections = new HashMap<Integer, Integer[]>();
     // the arraylist of tutorials
     Tutorial[] tutorials;
+
     // the array of pairs used to implement Pair
     Pair[] pairs;
-    // the lecture slots
-    HashMap<Integer, Slot> lecture_slots = new HashMap<Integer, Slot>();
-    // the tutorial slots
-    HashMap<Integer, Slot> tutorial_slots = new HashMap<Integer, Slot>();
+    
+    // the map of slot lecture hash to slot
+    HashMap<Integer, Slot> lecture_slots;
+    // the map of slot tutorial hash to slot
+    HashMap<Integer, Slot> tutorial_slots;
+    
+    // the array of lecture slots
+    Slot[] lec_slots_array;
+    // the array of tutorial slots
+    Slot[] tut_slots_array;
+    // the map from lecture tutorial slot ids to overlapping lecture ids
+    int[][] tutslot_lecslot;
 
     public Environment()
     {

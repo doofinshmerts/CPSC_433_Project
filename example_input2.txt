@@ -1,0 +1,31 @@
+Name:
+ShortExample2
+
+Lecture slots:
+MO, 18:00, 1, 1, 1
+MO, 19:00, 1, 1, 1
+
+Tutorial slots:
+MO, 8:00, 4, 2,4
+
+Lectures:
+CPSC 100 LEC 09, true
+CPSC 200 LEC 01, false
+
+Tutorials:
+CPSC 100 LEC 09 TUT 01,true
+
+Not compatible:
+CPSC 100 LEC 09, CPSC 100 LEC 09 TUT 01
+
+Unwanted:
+CPSC 100 LEC 09, MO, 19:00
+
+Preferences:
+TU, 9:30, CPSC 100 LEC 09, 10
+
+Pair:
+CPSC 100 LEC 09, CPSC 200 LEC 01
+
+Partial assignments:
+CPSC 200 LEC 01, MO, 18:00
