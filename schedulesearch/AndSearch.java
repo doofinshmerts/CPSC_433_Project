@@ -14,8 +14,8 @@ public class AndSearch
 
     /**
      * initialization funciton for the AndSearch
-     * @param _env: the environment
-     * @param _s0: the starting state
+     * @param _env the environment
+     * @param _s0 the starting state
      */
     public AndSearch(Environment _env, Problem _s0)
     {
@@ -25,8 +25,8 @@ public class AndSearch
 
     /**
      * run the and tree search
-     * @param sf: the final state to return
-     * @return: true if a solution could be found, otherwise false
+     * @param sf the final state to return
+     * @return true if a solution could be found, otherwise false
      */
     public boolean RunSearch(Problem sf)
     {
@@ -46,9 +46,9 @@ class FLeafComparator implements Comparator<Problem>
 {
     /**
      * This methode implements the f_leaf function to sort problems p1 and p2
-     * @param p1: the first problem to sort
-     * @param p2: the second problem to sort
-     * @return: negative if the first object should go first in the list, positive otherwise
+     * @param p1 the first problem to sort
+     * @param p2 the second problem to sort
+     * @return negative if the first object should go first in the list, positive otherwise
      */ 
     public int compare(Problem p1, Problem p2)
     {

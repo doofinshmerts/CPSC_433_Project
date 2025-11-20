@@ -20,10 +20,10 @@ public final class InputParser
      * The parser first gets all information from the file and creates the environment
      * Then it uses any partial assignments to populate the starting state. if there are
      * any error in parsing the file, or if the partial assignments are un-satisfiable then return an error
-     * @param input_file: the input file to parse
-     * @param env: the environment to return
-     * @param s0: the start state to return
-     * @return: false if there was an error, otherwise true
+     * @param input_file the input file to parse
+     * @param env the environment to return
+     * @param s0 the start state to return
+     * @return false if there was an error, otherwise true
      */
     public static boolean ParseInputFile(String input_file, Environment env, Problem s0)
     {
@@ -111,7 +111,7 @@ public final class InputParser
             env.tut_slots_array[k] = slot;
 
             // find the ids of any overlapping lectures if they exist
-            int[] temp = slot.TutSlotToOverLappingLecSlot();
+            int[] temp = slot.TutSlotToOverLappingLecSlots();
             ArrayList<Integer> lec_slots = new ArrayList<Integer>();
 
             for(int j = 0; j < temp.length; j++)
@@ -132,10 +132,45 @@ public final class InputParser
             }
             env.tutslot_lecslot[k] = temp;
 
+            // assign the slot id and increment the counter
             slot.id = k;
             k++;
         }
 
+        // fill the map from lecture slots to tutorial slots
+        ArrayList<int[]> lec_to_tut_slot = new ArrayList<int[]>();
+
+        for(int i = 0; i < env.lec_slots_array.length; i++)
+        {
+            // get the tutorial hashes of tutorials that would potentially overlap this lecture slot
+            int[] temp = env.lec_slots_array[i].LecSlotToOverLappingTutSlots();
+            ArrayList<Integer> tut_slots = new ArrayList<Integer>();
+            for(int j = 0; j < temp.length; j++)
+            {
+                // if the slot exists then get its id and add it
+                if(env.tutorial_slots.containsKey(temp[j]))
+                {
+                    tut_slots.add(env.tutorial_slots.get(temp[j]).id);
+                }
+            }
+
+            // add the overlapping lecture slots to the array
+            temp = new int[tut_slots.size()];
+            for(int j = 0; j < temp.length; j++)
+            {
+                temp[j] = tut_slots.get(j);
+            }
+
+            // add this array to the array of arrays
+            lec_to_tut_slot.add(temp);
+        }
+
+        // record this map in the environment 
+        env.lecslot_tutslot = new int[lec_to_tut_slot.size()][];
+        for(int i = 0; i < env.lecslot_tutslot.length; i++)
+        {
+            env.lecslot_tutslot[i] = lec_to_tut_slot.get(i);
+        }
 
         // Get the Lectures ######################################################################################################
         // key is the course identifier (name and number), The key for the inner map is the lecture number 
@@ -283,7 +318,7 @@ public final class InputParser
         // Parse Partial Assignments ######################################################################################################################################
         ArrayList<UnwantedPair> part_assign_lec = new ArrayList<UnwantedPair>();
         ArrayList<UnwantedPair> part_assign_tut = new ArrayList<UnwantedPair>();
-        if(!ParsePartialAssignments(bufferedReader, lec_tut_data, part_assign_tut, part_assign_lec))
+        if(!ParsePartialAssignments(bufferedReader, env.lecture_slots, env.tutorial_slots, lec_tut_data, part_assign_tut, part_assign_lec))
         {
             System.out.println("Could not get unwanted data from file: " + input_file);
             return false;
@@ -321,9 +356,9 @@ public final class InputParser
 
     /**
      * prints all the information obtained from parsing the file
-     * @param env: the environment information
-     * @param part_assign_lec: the partial assignments of lectures
-     * @param part_assign_tut: the partial assignments of tutorials
+     * @param env the environment information
+     * @param part_assign_lec the partial assignments of lectures
+     * @param part_assign_tut the partial assignments of tutorials
      */
     private static void PrintParseResults(Environment env, ArrayList<UnwantedPair> part_assign_lec, ArrayList<UnwantedPair> part_assign_tut)
     {
@@ -355,6 +390,17 @@ public final class InputParser
             }
         }
 
+        //print map of lecture slots to tutorial slots
+        System.out.println("\nMap of Lecture Slots to Tutorial Slots\n");
+        for(int i = 0; i < env.lecslot_tutslot.length; i++)
+        {
+            System.out.println("lecture id: " + i);
+            for(int j = 0; j < env.lecslot_tutslot[i].length; j++)
+            {
+                System.out.println("\ttut id: " + env.lecslot_tutslot[i][j]);
+            }
+        }
+
         // Print the Lectures and Tutorials
         System.out.println("\nLecture and Tutorial Data:\n");
         // set parent lecture number in each tutorial for backwards lookup
@@ -383,6 +429,13 @@ public final class InputParser
             {
                 System.out.println("\tId: " + elm[i]);
             }
+        }
+
+        // print the 5xx lectures
+        System.out.println("\nLectures 5XX:\n");
+        for(int i = 0; i < env.lectures_5xx.length; i++)
+        {
+            env.lectures[env.lectures_5xx[i]].PrintData();
         }
 
         // print the not compatible assignments
@@ -519,7 +572,7 @@ public final class InputParser
             System.out.println("");
             UnwantedPair p = part_assign_lec.get(i);
             env.lectures[p.id].PrintData();
-            env.lecture_slots.get(p.slot_id).PrintSlot();
+            env.lec_slots_array[p.slot_id].PrintSlot();
         }
 
 
@@ -528,7 +581,7 @@ public final class InputParser
             System.out.println("");
             UnwantedPair p = part_assign_tut.get(i);
             env.tutorials[p.id].PrintData();
-            env.tutorial_slots.get(p.slot_id).PrintSlot();
+            env.tut_slots_array[p.slot_id].PrintSlot();
         }
     }
 
@@ -536,15 +589,17 @@ public final class InputParser
     
     /**
      * Parse for the unwanted slots
-     * @param bufferedReader: the file to read the data from
-     * @param lectures: the array of lectures to use
-     * @param tutorials: the array of tutorials to use
-     * @param lec_tut_data: the map of lectures and tutorials to ids
-     * @param tutorial_slots: the map of ids to tutorial slots
-     * @param lecture_slots: the map of ids to lecture slots
+     * @param bufferedReader the file to read the data from
+     * @param lecture_slots the map of ids to lecture slots
+     * @param tutorial_slots the map of ids to tutorial slots
+     * @param lec_tut_data the map of lectures and tutorials to ids
+     * @param part_assign_tut the array of partial tutorial assignemnts
+     * @param part_assign_lec the array of partial lecture assignments
      * @return: true if no errors occured while parsing the data, false otherwise
      */
-    private static boolean ParsePartialAssignments(BufferedReader bufferedReader,  
+    private static boolean ParsePartialAssignments(BufferedReader bufferedReader,
+                                        HashMap<Integer, Slot> lecture_slots,
+                                        HashMap<Integer, Slot> tutorial_slots,  
                                         HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, 
                                         ArrayList<UnwantedPair> part_assign_tut,
                                         ArrayList<UnwantedPair> part_assign_lec)
@@ -570,16 +625,36 @@ public final class InputParser
             {
                 if(pair.is_lec)
                 {
-                    part_assign_lec.add(pair);
+                    // check that the slot exists
+                    if(lecture_slots.containsKey(pair.slot_id))
+                    {
+                        // set the slot id to the actual id
+                        pair.slot_id = lecture_slots.get(pair.slot_id).id;
+                        part_assign_lec.add(pair);
+                    }
+                    else
+                    {
+                        System.out.println("INPUT WARNING: (Partial Assignments) invalid slot in line: " + nextLine);
+                    }
                 }
                 else
                 {
-                    part_assign_tut.add(pair);
+                    // check that the slot exits
+                    if(tutorial_slots.containsKey(pair.slot_id))
+                    {
+                        // set the slot id to the actuall id
+                        pair.slot_id = tutorial_slots.get(pair.slot_id).id;
+                        part_assign_tut.add(pair);
+                    }
+                    else
+                    {
+                        System.out.println("INPUT WARNING: (Partial Assignments) invalid slot in line: " + nextLine);
+                    }
                 }
             }
             else
             {
-                System.out.println("INPUT WARNING: (Pairs) invalid information in line: " + nextLine);
+                System.out.println("INPUT WARNING: (Partial Assignments) invalid information in line: " + nextLine);
             }
 
             // read the next line from the file
@@ -596,11 +671,11 @@ public final class InputParser
 
     /**
      * Parse the input data for pairs 
-     * @param bufferedReader: the file to read the data from
-     * @param lectures: the array of lectures to use
-     * @param tutorials: the array of tutorials to use
-     * @param pairs: the set of pairs of lecture/tutorials to return
-     * @return: true if no errors occured while parsing the data, false otherwise
+     * @param bufferedReader the file to read the data from
+     * @param lectures the array of lectures to use
+     * @param tutorials the array of tutorials to use
+     * @param pairs the set of pairs of lecture/tutorials to return
+     * @return true if no errors occured while parsing the data, false otherwise
      */ 
     private static boolean ParsePairs(BufferedReader bufferedReader, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, ArrayList<Pair> pairs)
     {
@@ -650,13 +725,13 @@ public final class InputParser
 
     /**
      * Parse for the preferences
-     * @param bufferedReader: the file to read the data from
-     * @param lectures: the array of lectures to use
-     * @param tutorials: the array of tutorials to use
-     * @param lec_tut_data: the map of lectures and tutorials to ids
-     * @param tutorial_slots: the map of ids to tutorial slots
-     * @param lecture_slots: the map of ids to lecture slots
-     * @return: true if no errors occured while parsing the data, false otherwise 
+     * @param bufferedReader the file to read the data from
+     * @param lectures the array of lectures to use
+     * @param tutorials the array of tutorials to use
+     * @param lec_tut_data the map of lectures and tutorials to ids
+     * @param tutorial_slots the map of ids to tutorial slots
+     * @param lecture_slots the map of ids to lecture slots
+     * @return true if no errors occured while parsing the data, false otherwise 
      */
     private static boolean ParsePreferences(BufferedReader bufferedReader, 
                                         Lecture[] lectures, 
@@ -736,10 +811,10 @@ public final class InputParser
 
     /**
      * Parse the line for a lecture/tutorial, time slot, and preference value
-     * @param nectline: the line to parse for the data
-     * @param lec_tut_data: the map of lectures and tutorials to ids
-     * @param pref: the data structure to return the information in
-     * @retrun: true if a data was found, false otherwise
+     * @param nectline the line to parse for the data
+     * @param lec_tut_data the map of lectures and tutorials to ids
+     * @param pref the data structure to return the information in
+     * @retrun true if a data was found, false otherwise
      */ 
     private static boolean TryGetPreferenceFromLine(String nextLine, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, Preference pref)
     {
@@ -912,13 +987,13 @@ public final class InputParser
 
     /**
      * Parse for the unwanted slots
-     * @param bufferedReader: the file to read the data from
-     * @param lectures: the array of lectures to use
-     * @param tutorials: the array of tutorials to use
-     * @param lec_tut_data: the map of lectures and tutorials to ids
-     * @param tutorial_slots: the map of ids to tutorial slots
-     * @param lecture_slots: the map of ids to lecture slots
-     * @return: true if no errors occured while parsing the data, false otherwise
+     * @param bufferedReader the file to read the data from
+     * @param lectures the array of lectures to use
+     * @param tutorials the array of tutorials to use
+     * @param lec_tut_data the map of lectures and tutorials to ids
+     * @param tutorial_slots the map of ids to tutorial slots
+     * @param lecture_slots the map of ids to lecture slots
+     * @return true if no errors occured while parsing the data, false otherwise
      */
     private static boolean ParseUnwanted(BufferedReader bufferedReader, 
                                         Lecture[] lectures, 
@@ -998,10 +1073,10 @@ public final class InputParser
 
     /**
      * Parse the line for a lecture/tutorial and a time slot
-     * @param nectline: the line to parse for the data
-     * @param lec_tut_data: the map of lectures and tutorials to ids
-     * @param pair: the pair data structure to return the information in
-     * @retrun: true if a pair was found, false otherwise
+     * @param nectline the line to parse for the data
+     * @param lec_tut_data the map of lectures and tutorials to ids
+     * @param pair the pair data structure to return the information in
+     * @retrun true if a pair was found, false otherwise
      */ 
     private static boolean TryGetUnwantedPairFromLine(String nextLine, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, UnwantedPair pair)
     {
@@ -1113,11 +1188,11 @@ public final class InputParser
 
     /**
      * Parse the input file for the not compatible data
-     * @param bufferedReader: the file to read the data from
-     * @param lectures: the array of lectures to use
-     * @param tutorials: the array of tutorials to use
-     * @param lec_tut_data: the map between lectures and tutorials needed for the not compatible assignments
-     * @return: true if no errors occured while parsing the data, false otherwise
+     * @param bufferedReader the file to read the data from
+     * @param lectures the array of lectures to use
+     * @param tutorials the array of tutorials to use
+     * @param lec_tut_data the map between lectures and tutorials needed for the not compatible assignments
+     * @return true if no errors occured while parsing the data, false otherwise
      */ 
     private static boolean ParseNotCompatible(BufferedReader bufferedReader, Lecture[] lectures,Tutorial[] tutorials, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
     {
@@ -1196,10 +1271,10 @@ public final class InputParser
 
     /**
      * Try to get the ids of the two lectures/tutorials in the given line
-     * @param nextLine: the string to parse for the pair of ids
-     * @param lec_tut_data: the map from tutorials and lectures to ids
-     * @param pair: the structure for returning the data in
-     * @retrun: true if a pair was found, false if not
+     * @param nextLine the string to parse for the pair of ids
+     * @param lec_tut_data the map from tutorials and lectures to ids
+     * @param pair the structure for returning the data in
+     * @retrun true if a pair was found, false if not
      */
     private static boolean TryGetPairFromLine(String nextLine, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, Pair pair)
     {
@@ -1255,10 +1330,10 @@ public final class InputParser
 
     /**
      * Parse line1 and line2 for a pair of lecture ids
-     * @param line1: the first line to parse
-     * @param line2: the second line to parse
-     * @param lec_tut_data: the map from lectures and tutorials to ids
-     * @retrun: true if a pair could be found, false if not
+     * @param line1 the first line to parse
+     * @param line2 the second line to parse
+     * @param lec_tut_data the map from lectures and tutorials to ids
+     * @retrun true if a pair could be found, false if not
      */
     private static boolean ParseForLecLecPair(String line1, String line2, Pair pair, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
     {
@@ -1322,10 +1397,10 @@ public final class InputParser
 
     /**
      * Parse line1 and line2 for a lec tut pair ids
-     * @param line1: the first line to parse
-     * @param line2: the second line to parse
-     * @param lec_tut_data: the map from lectures and tutorials to ids
-     * @retrun: true if a pair could be found, false if not
+     * @param line1 the first line to parse
+     * @param line2 the second line to parse
+     * @param lec_tut_data the map from lectures and tutorials to ids
+     * @retrun true if a pair could be found, false if not
      */
     private static boolean ParseForLecTutPair(String line1, String line2, Pair pair, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
     {
@@ -1405,10 +1480,10 @@ public final class InputParser
 
     /**
      * Parse line1 and line2 for a tut lec pair ids
-     * @param line1: the first line to parse
-     * @param line2: the second line to parse
-     * @param lec_tut_data: the map from lectures and tutorials to ids
-     * @retrun: true if a pair could be found, false if not
+     * @param line1 the first line to parse
+     * @param line2 the second line to parse
+     * @param lec_tut_data the map from lectures and tutorials to ids
+     * @retrun true if a pair could be found, false if not
      */
     private static boolean ParseForTutLecPair(String line1, String line2, Pair pair, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
     {
@@ -1489,10 +1564,10 @@ public final class InputParser
 
     /**
      * Parse line1 and line2 for a tut tut pair ids
-     * @param line1: the first line to parse
-     * @param line2: the second line to parse
-     * @param lec_tut_data: the map from lectures and tutorials to ids
-     * @retrun: true if a pair could be found, false if not
+     * @param line1 the first line to parse
+     * @param line2 the second line to parse
+     * @param lec_tut_data the map from lectures and tutorials to ids
+     * @retrun true if a pair could be found, false if not
      */
     private static boolean ParseForTutTutPair(String line1, String line2, Pair pair, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
     {
@@ -1591,9 +1666,9 @@ public final class InputParser
 
     /**
      * Parse the input file for the tutorial data
-     * @param bufferedReader: the file reader to get the lines from
-     * @param lec_tut_data: the hashmap to store the tutorial data in
-     * @return: true if parse was successfull, false if errors occured
+     * @param bufferedReader the file reader to get the lines from
+     * @param lec_tut_data the hashmap to store the tutorial data in
+     * @return true if parse was successfull, false if errors occured
      */
     private static boolean ParseTutorialData(BufferedReader bufferedReader, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
     {
@@ -1667,9 +1742,9 @@ public final class InputParser
 
     /**
      * takes a string and tries to convert it to basic tutorial data (course_descriptor, lecture number, tutorial number)
-     * @param line: the line to parse for the tutorial data
-     * @param lec: the tutorial data structure to return the information in
-     * @return: true if the line could be parsed for tutorial data, false otherwise
+     * @param line the line to parse for the tutorial data
+     * @param lec the tutorial data structure to return the information in
+     * @return true if the line could be parsed for tutorial data, false otherwise
      */
     private static boolean TryGetTutorialBasicFromLine(String line, TutorialData tut)
     {
@@ -1753,9 +1828,9 @@ public final class InputParser
 
     /**
      * takes a string and tries to convert it to tutorial data
-     * @param line: the line to parse for the tutorial data
-     * @param lec: the tutorial data structure to return the information in
-     * @return: true if the line could be parsed for tutorial data, false otherwise
+     * @param line the line to parse for the tutorial data
+     * @param lec the tutorial data structure to return the information in
+     * @return true if the line could be parsed for tutorial data, false otherwise
      */
     private static boolean TryGetTutorialFromLine(String line, TutorialData tut)
     {
@@ -1861,9 +1936,9 @@ public final class InputParser
 
     /**
      * Parse the input file for the lecture data
-     * @param bufferedReader: the file reader to get the lines from
-     * @param lec_tut_data: the hashmap of lecture data to put the results in
-     * @return: true if parse was successfull, false if errors occured
+     * @param bufferedReader the file reader to get the lines from
+     * @param lec_tut_data the hashmap of lecture data to put the results in
+     * @return true if parse was successfull, false if errors occured
      */
     private static boolean ParseLectureData(BufferedReader bufferedReader, HashMap<String, HashMap<Integer, LectureData>> lec_tut_data)
     {
@@ -1934,9 +2009,9 @@ public final class InputParser
 
     /**
      * takes a string and tries to convert it to only the basic lecture data (course_descriptor and lecture number
-     * @param line: the line to parse for the lecture information
-     * @param lec: the lecture data structure to retrun the information in
-     * @return: true if the line could be parsed for lecture data, false otherwise
+     * @param line the line to parse for the lecture information
+     * @param lec the lecture data structure to retrun the information in
+     * @return true if the line could be parsed for lecture data, false otherwise
      */
     private static boolean TryGetLectureBasicFromLine(String line, LectureData lec)
     {
@@ -1990,9 +2065,9 @@ public final class InputParser
 
     /**
      * takes a string and tries to convert it to lecture data
-     * @param line: the line to parse for the lecture information
-     * @param lec: the lecture data structure to retrun the information in
-     * @return: true if the line could be parsed for lecture data, false otherwise
+     * @param line the line to parse for the lecture information
+     * @param lec the lecture data structure to retrun the information in
+     * @return true if the line could be parsed for lecture data, false otherwise
      */
     private static boolean TryGetLectureFromLine(String line, LectureData lec)
     {
@@ -2085,8 +2160,8 @@ public final class InputParser
 
     /**
      * Parse the input file for the data set name bellow the keyword "Name:"
-     * @param bufferedReader: the file reader to get the lines from
-     * @return: the name of the dataset, null or empty if not found
+     * @param bufferedReader the file reader to get the lines from
+     * @return the name of the dataset, null or empty if not found
      */
     private static String ParseForName(BufferedReader bufferedReader)
     {
@@ -2136,9 +2211,9 @@ public final class InputParser
 
     /**
      * Parse the input file for the lecture slots
-     * @param bufferedReader: the file reader to get the lines from
-     * @param lecture_slots: the hashmap of lecture slots to put the results in
-     * @return: true if parse was successfull, false if errors occured
+     * @param bufferedReader the file reader to get the lines from
+     * @param lecture_slots the hashmap of lecture slots to put the results in
+     * @return true if parse was successfull, false if errors occured
      */
     private static boolean ParseLectureSlots(BufferedReader bufferedReader, HashMap<Integer, Slot> lecture_slots)
     {
@@ -2203,9 +2278,9 @@ public final class InputParser
 
     /**
      * Parse the input file for the tutorial slots
-     * @param bufferedReader: the file reader to get the lines from
-     * @param tutorial_slots: the hashmap of tutorial slots to put the results in
-     * @return: true if parse was successfull, false if errors occured
+     * @param bufferedReader the file reader to get the lines from
+     * @param tutorial_slots the hashmap of tutorial slots to put the results in
+     * @return true if parse was successfull, false if errors occured
      */
     private static boolean ParseTutorialSlots(BufferedReader bufferedReader, HashMap<Integer, Slot> tutorial_slots)
     {
@@ -2252,9 +2327,9 @@ public final class InputParser
 
     /**
      * takes a string and tries to convert it to basic slot information (Day and time)
-     * @param line: the line to parse for the slot information
-     * @param slot: the slot to put the return data into
-     * @return: true if the line could be parsed for slot information, false otherwise
+     * @param line the line to parse for the slot information
+     * @param slot the slot to put the return data into
+     * @return true if the line could be parsed for slot information, false otherwise
      */
     private static boolean TryGetBasicSlotFromLine(String line, Slot return_slot)
     {
@@ -2326,9 +2401,9 @@ public final class InputParser
 
     /**
      * takes a string and tries to convert it to a lecture slot
-     * @param line: the line to parse for the slot information
-     * @param slot: the slot to put the return data into
-     * @return: true if the line could be parsed for slot information, false otherwise
+     * @param line the line to parse for the slot information
+     * @param slot the slot to put the return data into
+     * @return true if the line could be parsed for slot information, false otherwise
      */
     private static boolean TryGetSlotFromLine(String line, Slot return_slot)
     {
@@ -2423,6 +2498,12 @@ public final class InputParser
         return true;
     }
 
+    /**
+     * Get an integer from a string 
+     * @param input_string the input string to parse
+     * @param int_return the array to put the integer in (will be put into index 0)
+     * @return true if a number was found, false if not
+     */
     private static boolean GetSafeIntFromString(String input_string, int[] int_return)
     {
         // check that the given array is not null and has at least one index for assigning values
@@ -2488,9 +2569,9 @@ class LectureData
     /**
      * Convert the Lecture Data to a Lecture
      * NOTE: tutorials must be assigned unique ids first
-     * @param id: the unique id to give this lecture
-     * @param section: the section that this lecture bellongs to 
-     * @return: a lecture data structure
+     * @param id the unique id to give this lecture
+     * @param section the section that this lecture bellongs to 
+     * @return a lecture data structure
      */
     public Lecture ConvertToLecture(int _id, int section)
     {
@@ -2541,8 +2622,8 @@ class TutorialData
     /**
      * Convert the Tutorial Data to a Tutorial
      * NOTE: tutorials must be assigned unique ids first
-     * @param id: the unique id to give this tutorial
-     * @return: a lecture data structure
+     * @param id the unique id to give this tutorial
+     * @return a lecture data structure
      */
     public Tutorial ConvertToTutorial(int _id)
     {

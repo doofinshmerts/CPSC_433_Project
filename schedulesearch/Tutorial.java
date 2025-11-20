@@ -3,6 +3,9 @@ package schedulesearch;
 import java.util.HashMap;
 import java.util.HashSet;
 
+/**
+ * The tutorial class holds all information needed to describe a totorial
+ */
 public class Tutorial
 {
     int id; // the unique id of this tutorial

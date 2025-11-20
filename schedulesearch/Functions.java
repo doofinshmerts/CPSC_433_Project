@@ -210,16 +210,20 @@ public final class Functions
             slot_mask.add(slot_id);
         }
         
-        // find other 5xx level lectures ############################################################################################################################
-        for(int i = 0; i < env.lectures_5xx.length; i++)
+        // find other 5xx level lectures if this is a 5xx level lecture ############################################################################################################################
+        if(lecture.is_5xx)
         {
-            int id = pr.lectures[env.lectures_5xx[i]];
-            if(id != -1)
+            for(int i = 0; i < env.lectures_5xx.length; i++)
             {
-                slot_mask.add(id);
+                int id = pr.lectures[env.lectures_5xx[i]];
+                if(id != -1)
+                {
+                    slot_mask.add(id);
+                }
             }
+        
         }
-
+        
         // filter the array list
         int num_slots = env.lec_slots_array.length - slot_mask.size();
         if(num_slots <= 0)
@@ -276,8 +280,116 @@ public final class Functions
         // if any of the lectures or tutorials that are not compatible with t have been assigned slot s then remove s from consideration
         // if unwanted(t,s) is true then remove s from consideration
         // return the id's of all remaining slots
+        // get the information about the lecture
 
-        return new int[0];
+        Tutorial tutorial = env.tutorials[tut_id];
+        // this hashset will store the indices of all the slots that are not valid
+        HashSet<Integer> slot_mask = new HashSet<Integer>();
+
+        // Find over capacity slots ####################################################################################################################
+        // initialize an array for holding the slots fill values
+        int[] slot_fill = new int[env.lec_slots_array.length];
+        for(int i = 0; i < slot_fill.length; i++)
+        {
+            slot_fill[i] = 0;
+        }
+
+        // count the number of elements in each slot
+        for(int i = 0; i < pr.lectures.length; i++)
+        {
+            if(pr.lectures[i] != -1)
+            {
+                slot_fill[pr.lectures[i]]++;
+            }
+        }
+
+        // if the slot is at capacity then add it to the mask
+        for(int i = 0; i < slot_fill.length; i++)
+        {
+            if(slot_fill[i] >= env.tut_slots_array[i].max)
+            {
+                // this lecture slot does not have enough spaces for this lecture
+                slot_mask.add(i);
+                continue;
+            }
+            else if(tutorial.is_al && (slot_fill[i] >= env.tut_slots_array[i].almax))
+            {
+                // this lecture slot does not have enough active learning spaces for this active learning lecture
+                slot_mask.add(i);
+                continue;
+            }
+
+            if(tutorial.is_evng && !env.tut_slots_array[i].is_evng)
+            {
+                // this is not an evening lecture slot
+                slot_mask.add(i);
+            }
+        }
+    
+        // find slots of the corresponding lecture ##########################################################################################################
+        // get the slot of the parent lecture
+        int lec_slot = pr.lectures[tutorial.lec_id];
+        if(lec_slot != -1)
+        {
+            // get the overlapping tutorial slots for this lecture slot
+            for(int i = 0; i < env.lecslot_tutslot.length; i++)
+            {
+                slot_mask.add(env.lecslot_tutslot[lec_slot][i]);
+            }
+        }
+
+        // find not compatible slot assignments
+        // loop through the not compatible lectures/tutorials and get their slot assignments
+        for(Integer lec: tutorial.not_compatible_lec)
+        {
+            // lec is the id of the not compatible lecture, use this to get the slot assigned to lec
+            int slot_id = pr.lectures[lec];
+            if(slot_id != -1)
+            {
+                // get the overlapping tutorail slots for this lecture slot
+                for(int i = 0; i < env.lecslot_tutslot.length; i++)
+                {
+                    slot_mask.add(env.lecslot_tutslot[slot_id][i]);
+                }
+            }
+        }
+
+        for(Integer tut: tutorial.not_compatible_tut)
+        {
+            // the id of the tutorial
+            int id = pr.tutorials[tut];
+            if(id != -1)
+            {
+                // add the id of the overlapping tutorial
+                slot_mask.add(id);
+            }            
+        }
+
+        // find the Unwanted slots #################################################################################################################################
+        for(Integer slot_id: tutorial.unwanted)
+        {
+            slot_mask.add(slot_id);
+        }
+
+        // filter the array list
+        int num_slots = env.tut_slots_array.length - slot_mask.size();
+        if(num_slots <= 0)
+        {
+            return null;
+        }
+
+        int[] valid_slots = new int[num_slots];
+        int j = 0;
+        for(int i = 0; i < env.tut_slots_array.length; i++)
+        {
+            if(!slot_mask.contains(i))
+            {
+                valid_slots[j] = i;
+                j++;
+            }
+        }
+
+        return valid_slots;
     }
 
 }

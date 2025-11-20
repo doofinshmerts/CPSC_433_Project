@@ -1,5 +1,8 @@
 package schedulesearch;
 
+/**
+ * program entry point
+ */
 public class Main
 {
     // the names of input variables
@@ -70,23 +73,29 @@ public class Main
         }
     }
 
-    private static boolean GetSafeIntFromString(String input_string, int[] float_return)
+    /**
+     * Get an integer from a string 
+     * @param input_string the input string to parse
+     * @param int_return the array to put the integer in (will be put into index 0)
+     * @return true if a number was found, false if not
+     */
+    private static boolean GetSafeIntFromString(String input_string, int[] int_return)
     {
         // check that the given array is not null and has at least one index for assigning values
-        if(float_return == null || float_return.length == 0)
+        if(int_return == null || int_return.length == 0)
         {
             return false;
         }
 
         // try to get an integer from the string
         try{
-            float_return[0] = Integer.parseInt(input_string);
+            int_return[0] = Integer.parseInt(input_string);
             // if the string was a float then return the float by reference and return true
             return true;
         }catch(NumberFormatException e)
         {
             // if the string was not a float then return false and an error message to the user
-            float_return[0] = -1;
+            int_return[0] = -1;
             return false;
         }
     }

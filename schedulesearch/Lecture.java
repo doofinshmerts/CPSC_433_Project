@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.HashMap;
 
+/**
+ * The lecture class type contains all properties of a lecture
+ */
 public class Lecture
 {
     int id; // the unique id of this lecture
