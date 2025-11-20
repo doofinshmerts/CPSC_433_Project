@@ -27,6 +27,9 @@ public class Slot
     int hour; // the hour in millitary time (0-24)
     int minute; // the minute (0-60)
 
+    // the name for printing
+    String name;
+
     /**
      * print formatted slot information
      */

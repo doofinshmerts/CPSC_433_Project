@@ -1,5 +1,9 @@
 package schedulesearch;
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+
 /**
  * the Functions class contains all the static functions needed for the And Tree search
  * This class was created so that these functions are available to the inputParser and Main classes as well
@@ -430,4 +434,113 @@ public final class Functions
         return valid_slots;
     }
 
+    /**
+     * prints the assignments of lectures and tutorials to slots in a nice format
+     * @param pr the problem to print
+     * @param env the environment variables
+     */
+    public static void PrintProblem(Problem pr, Environment env)
+    {
+        // create an array for holding the data
+        ArrayList<LectureFormat> output = new ArrayList<LectureFormat>();
+
+        // parse through the problem to get the assignments
+        for(int i = 0; i < env.num_lectures; i++)
+        {
+            LectureFormat temp_lec = new LectureFormat();
+            // get the slot string
+            if(pr.lectures[i] == -1)
+            {
+                continue;
+            }
+            temp_lec.slot = env.lec_slots_array[pr.lectures[i]].name;
+            // get the lecture string
+            temp_lec.lecture = env.lectures[i].name;
+            // get all the tutorials associated with this lecture
+            for(int j = 0; j < env.lectures[i].tutorials.length; j++)
+            {
+                TutorialFormat temp_tut = new TutorialFormat();
+                int tut_id = env.lectures[i].tutorials[j];
+                // get the tutorial name
+                temp_tut.tutorial = env.tutorials[tut_id].name;
+                if(pr.tutorials[tut_id] != -1)
+                {
+                    // get the slot name
+                    temp_tut.slot = env.tut_slots_array[pr.tutorials[tut_id]].name;
+                }
+
+                temp_lec.tutorials.add(temp_tut);
+            }
+
+            Collections.sort(temp_lec.tutorials, new TutorialSorter());
+
+            output.add(temp_lec);
+        }
+
+        Collections.sort(output, new LectureSorter());
+
+        for(int i = 0; i < output.size(); i++)
+        {
+            System.out.println(output.get(i).lecture + " " + output.get(i).slot);
+
+            for(int j =0; j < output.get(i).tutorials.size(); j++)
+            {
+                System.out.println(output.get(i).tutorials.get(j).tutorial + " " + output.get(i).tutorials.get(j).slot);
+            }
+        }
+    } 
+}
+
+class LectureSorter implements Comparator<LectureFormat>
+{
+    /**
+     * implements the sorting function for comparator
+     * @param a the first object to be compared.
+     * @param b the second object to be compared.
+     * @return : 1 if a should appear above b, 0 if they are equal, -1 otherwise
+     */
+    public int compare(LectureFormat a, LectureFormat b)
+    {
+        // sort on the name 
+        return a.lecture.compareTo(b.lecture);
+    }
+}
+
+class TutorialSorter implements Comparator<TutorialFormat>
+{
+    /**
+     * implements the sorting function for comparator
+     * @param a the first object to be compared.
+     * @param b the second object to be compared.
+     * @return : 1 if a should appear above b, 0 if they are equal, -1 otherwise
+     */
+    public int compare(TutorialFormat a, TutorialFormat b)
+    {
+        // sort on the name 
+        return a.tutorial.compareTo(b.tutorial);
+    }
+}
+
+/**
+ * for holding the information needed to print out the assignments
+ */
+class LectureFormat
+{
+    // the array of tutorials associated with this lecture
+    ArrayList<TutorialFormat> tutorials = new ArrayList<TutorialFormat>();
+    // the name of the lecture
+    String lecture = "";
+    // the name of the slot
+    String slot = "";
+}
+
+/**
+ * for holding the information needed to print out the assignments
+ */
+class TutorialFormat
+{
+    // the name of this tutorial
+    String tutorial = "";
+    // the name of this slot
+    String slot = "";
 }

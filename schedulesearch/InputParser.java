@@ -385,6 +385,9 @@ public final class InputParser
             }
         }
 
+        // print the current form of the problem
+        Functions.PrintProblem(s0, env);
+
         // close the file reader and file buffer
         try{
             reader.close();
@@ -2458,6 +2461,7 @@ public final class InputParser
         {
             return false;
         }
+        return_slot.name = line;
 
         // get the day
         switch(elements[0])
