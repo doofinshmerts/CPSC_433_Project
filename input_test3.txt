@@ -1,0 +1,26 @@
+Name:
+lecture lecture not compatible
+
+Lecture slots:
+MO, 10:00, 3, 2, 2
+
+Tutorial slots:
+
+Lectures:
+CPSC 100 LEC 01, false
+CPSC 100 LEC 02, false
+
+Tutorials:
+
+Not compatible:
+CPSC 100 LEC 01, CPSC 100 LEC 02
+
+Unwanted:
+
+Preferences:
+
+Pair:
+
+Partial assignments:
+CPSC 100 LEC 01, MO, 10:00
+CPSC 100 LEC 02, MO, 10:00

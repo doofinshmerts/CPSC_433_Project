@@ -16,6 +16,36 @@ public class Problem
     }
 
     /**
+     * Assign a lecture to a slot
+     * @param lec_id the id of the lecture to assign
+     * @param slot_id the id of the slot to assign the lecture to
+     */
+    public void AssignLecture(int lec_id, int slot_id)
+    {
+        if(!(lec_id < lectures.length))
+        {
+            System.out.println("lecture id passed to assign lecture is larger than the number of lectures, something is very wrong");
+        }
+
+        lectures[lec_id] = slot_id;
+    }
+
+    /**
+     * Assign a tutorial to a slot
+     * @param tut_id the id of the tutorial to assign
+     * @param slot_id the id of the slot to assign the tutorial to
+     */
+    public void AssignTutorial(int tut_id, int slot_id)
+    {
+
+        if(!(tut_id < tutorials.length))
+        {
+            System.out.println("tutorial id passed to assign tutorial is larger than the number of tutorials, something is very wrong");
+        }
+        tutorials[tut_id] = slot_id;
+    }
+
+    /**
      * initialize the problem with a given number of lectures and tutorials to keep track of
      * @param num_lectures the number of lectures to track
      * @param num_tutorials the number of tutorials to track

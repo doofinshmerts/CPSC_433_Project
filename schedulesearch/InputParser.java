@@ -338,9 +338,53 @@ public final class InputParser
         
         // create an initial problem
         s0.SetupProblem(env.num_lectures, env.num_tutorials);
-        // try getting a set of tutorials
-        int[] valid_slots = Functions.ValidLectureSlots(env, 0, s0);
-        Functions.PrintLectureSlots(valid_slots, env);
+
+        // assign the partial assignments for the lectures
+        for(UnwantedPair pair : part_assign_lec)
+        {
+            System.out.println("\nAssigning lecture: " + pair.id + ", to slot: " + pair.slot_id);
+            // get the valid slots for this lecture assignments
+            int[] valid_slots = Functions.ValidLectureSlots(env, pair.id, s0);
+            if(valid_slots == null)
+            {
+                System.out.println("Invalid partial assignment: assigning lecture: " + pair.id + ", to slot: " + pair.slot_id);
+                return false; 
+            }
+            Functions.PrintLectureSlots(valid_slots, env); 
+
+            // ensure that the slot exists in the array of valid slots
+            for(int i = 0; i < valid_slots.length; i++)
+            {
+                if(valid_slots[i] == pair.slot_id)
+                {
+                    s0.AssignLecture(pair.id, pair.slot_id);
+                }
+            }
+        }
+
+        // assign the partial assignments for the tutorials
+        for(UnwantedPair pair : part_assign_tut)
+        {
+            System.out.println("\nAssigning tutorial: " + pair.id + ", to slot: " + pair.slot_id);
+            // get the valid slots for this lecture assignments
+            int[] valid_slots = Functions.ValidTutSlots(env, pair.id, s0);
+            if(valid_slots == null)
+            {
+                System.out.println("Invalid partial assignment: assigning tutorial: " + pair.id + ", to slot: " + pair.slot_id);
+                return false; 
+            }
+            Functions.PrintTutorialSlots(valid_slots, env); 
+
+            // ensure that the slot exists in the array of valid slots
+            for(int i = 0; i < valid_slots.length; i++)
+            {
+                if(valid_slots[i] == pair.slot_id)
+                {
+                    s0.AssignTutorial(pair.id, pair.slot_id);
+                }
+            }
+        }
+
         // close the file reader and file buffer
         try{
             reader.close();
@@ -366,21 +410,21 @@ public final class InputParser
         System.out.println("dataset name: " + env.dataset_name);
         
         // print the lecture slots
-        System.out.println("\nLecture slots:\nsize: " + env.lecture_slots.size());
+        System.out.println("\nLecture slots ############################################################\nsize: " + env.lecture_slots.size());
         for(int i = 0; i < env.lec_slots_array.length; i++)
         {
             env.lec_slots_array[i].PrintSlot();
         }
 
         // print the tutorial slots
-        System.out.println("\nTutorial slots:\nsize: " + env.tutorial_slots.size());
+        System.out.println("\nTutorial slots ###########################################################\nsize: " + env.tutorial_slots.size());
         for(int i = 0; i < env.tut_slots_array.length; i++)
         {
             env.tut_slots_array[i].PrintSlot();
         }
 
         // print map of tutorial slots to lecture slots
-        System.out.println("\nMap of Tutorial slots to lecture slots\n");
+        System.out.println("\nMap of Tutorial slots to lecture slots ###################################\n");
         for(int i = 0; i < env.tutslot_lecslot.length; i++)
         {
             System.out.println("tutorial id: " + i);
@@ -391,7 +435,7 @@ public final class InputParser
         }
 
         //print map of lecture slots to tutorial slots
-        System.out.println("\nMap of Lecture Slots to Tutorial Slots\n");
+        System.out.println("\nMap of Lecture Slots to Tutorial Slots ####################################\n");
         for(int i = 0; i < env.lecslot_tutslot.length; i++)
         {
             System.out.println("lecture id: " + i);
@@ -402,7 +446,7 @@ public final class InputParser
         }
 
         // Print the Lectures and Tutorials
-        System.out.println("\nLecture and Tutorial Data:\n");
+        System.out.println("\nLecture and Tutorial Data ##################################################\n");
         // set parent lecture number in each tutorial for backwards lookup
         for(int i = 0; i < env.num_lectures; i++)
         {
@@ -419,7 +463,7 @@ public final class InputParser
         }
 
         // print the sections map
-        System.out.println("\nSections:\n");
+        System.out.println("\nSections ###################################################################\n");
         int j = 0;
         for(Integer[] elm: env.sections.values())
         {
@@ -432,14 +476,14 @@ public final class InputParser
         }
 
         // print the 5xx lectures
-        System.out.println("\nLectures 5XX:\n");
+        System.out.println("\nLectures 5XX ###############################################################\n");
         for(int i = 0; i < env.lectures_5xx.length; i++)
         {
             env.lectures[env.lectures_5xx[i]].PrintData();
         }
 
         // print the not compatible assignments
-        System.out.println("\nNot compatible data from Lectures:\n");
+        System.out.println("\nNot compatible data from Lectures ###########################################\n");
         // set parent lecture number in each tutorial for backwards lookup
         for(int i = 0; i < env.num_lectures; i++)
         {
@@ -462,7 +506,7 @@ public final class InputParser
             
         }
         // print the not compatible assignments
-        System.out.println("\nNot compatible data from Tutorials:\n");
+        System.out.println("\nNot compatible data from Tutorials ############################################\n");
         // set parent lecture number in each tutorial for backwards lookup
         for(int i = 0; i < env.num_tutorials; i++)
         {
@@ -486,7 +530,7 @@ public final class InputParser
         }
 
         // print Unwanted
-        System.out.println("\nUnwanted:\n");
+        System.out.println("\nUnwanted ########################################################################\n");
         for(int i = 0; i < env.num_lectures; i++)
         {
             env.lectures[i].PrintData();
@@ -512,7 +556,7 @@ public final class InputParser
         }
 
         // print preferences for lectures
-        System.out.println("\nPreferences:\n");
+        System.out.println("\nPreferences #######################################################################\n");
         for(int i = 0; i < env.num_lectures; i++)
         {
             env.lectures[i].PrintData();
@@ -539,7 +583,7 @@ public final class InputParser
         }
 
         // print the pairs
-        System.out.println("\nPairs:");
+        System.out.println("\nPairs ###############################################################################");
         for(int i = 0; i < env.pairs.length; i++)
         {
             Pair p = env.pairs[i];
@@ -565,7 +609,7 @@ public final class InputParser
         }
 
         // print the partial assignments
-        System.out.println("\nPartial assignments:");
+        System.out.println("\nPartial assignments ##################################################################");
 
         for(int i = 0; i < part_assign_lec.size(); i++)
         {

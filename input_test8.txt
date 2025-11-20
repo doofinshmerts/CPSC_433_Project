@@ -1,0 +1,25 @@
+Name:
+5xx vs 5xx lecture 
+
+Lecture slots:
+MO, 10:00, 3, 2, 2
+
+Tutorial slots:
+
+Lectures:
+CPSC 500 LEC 01, false
+CPSC 500 LEC 02, false
+
+Tutorials:
+
+Not compatible:
+
+Unwanted:
+
+Preferences:
+
+Pair:
+
+Partial assignments:
+CPSC 500 LEC 01, MO, 10:00
+CPSC 500 LEC 02, MO, 10:00

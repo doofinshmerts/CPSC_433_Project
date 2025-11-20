@@ -125,9 +125,14 @@ public final class Functions
         // Find over capacity slots ####################################################################################################################
         // initialize an array for holding the slots fill values
         int[] slot_fill = new int[env.lec_slots_array.length];
+        // initialize an array for holding the al slots fill values
+        int[] slot_al_fill = new int[env.lec_slots_array.length];
+
+        // ### TODO ###: replace this fill counting by recording the fill values in the Problem class
         for(int i = 0; i < slot_fill.length; i++)
         {
             slot_fill[i] = 0;
+            slot_al_fill[i] = 0;
         }
 
         // count the number of elements in each slot
@@ -136,6 +141,10 @@ public final class Functions
             if(pr.lectures[i] != -1)
             {
                 slot_fill[pr.lectures[i]]++;
+                if(env.lectures[i].is_al)
+                {
+                    slot_al_fill[pr.lectures[i]]++;
+                }
             }
         }
 
@@ -148,7 +157,7 @@ public final class Functions
                 slot_mask.add(i);
                 continue;
             }
-            else if(lecture.is_al && (slot_fill[i] >= env.lec_slots_array[i].almax))
+            else if(lecture.is_al && (slot_al_fill[i] >= env.lec_slots_array[i].almax))
             {
                 // this lecture slot does not have enough active learning spaces for this active learning lecture
                 slot_mask.add(i);
@@ -177,7 +186,7 @@ public final class Functions
             }            
         }
 
-        // find not compatible slot assignments
+        // find not compatible slot assignments ######################################################################################################################
         // loop through the not compatible lectures/tutorials and get their slot assignments
         for(Integer lec: lecture.not_compatible_lec)
         {
@@ -256,10 +265,30 @@ public final class Functions
         {
             return;
         }
-        System.out.println("\nLecture slots:\n");
+        System.out.println("Lecture slots:");
         for(int i = 0; i < ids.length; i++)
         {
+            System.out.print("\t");
             env.lec_slots_array[ids[i]].PrintSlot();
+        }
+    }
+
+    /**
+     * print the list of tutorial slots
+     * @param ids the ids to print
+     * @param env the environment variables
+     */
+    public static void PrintTutorialSlots(int[] ids, Environment env)
+    {
+        if(ids == null)
+        {
+            return;
+        }
+        System.out.println("Tutorial slots:");
+        for(int i = 0; i < ids.length; i++)
+        {
+            System.out.print("\t");
+            env.tut_slots_array[ids[i]].PrintSlot();
         }
     }
 
@@ -288,18 +317,27 @@ public final class Functions
 
         // Find over capacity slots ####################################################################################################################
         // initialize an array for holding the slots fill values
-        int[] slot_fill = new int[env.lec_slots_array.length];
+        int[] slot_fill = new int[env.tut_slots_array.length];
+        // initialize an array for holding the al slots fill values
+        int[] slot_al_fill = new int[env.tut_slots_array.length];
+
+        // ### TODO ###: replace this fill counting by recording the fill values in the Problem class
         for(int i = 0; i < slot_fill.length; i++)
         {
             slot_fill[i] = 0;
+            slot_al_fill[i] = 0;
         }
 
         // count the number of elements in each slot
-        for(int i = 0; i < pr.lectures.length; i++)
+        for(int i = 0; i < pr.tutorials.length; i++)
         {
-            if(pr.lectures[i] != -1)
+            if(pr.tutorials[i] != -1)
             {
-                slot_fill[pr.lectures[i]]++;
+                slot_fill[pr.tutorials[i]]++;
+                if(env.tutorials[i].is_al)
+                {
+                    slot_al_fill[pr.tutorials[i]]++;
+                }
             }
         }
 
@@ -312,7 +350,7 @@ public final class Functions
                 slot_mask.add(i);
                 continue;
             }
-            else if(tutorial.is_al && (slot_fill[i] >= env.tut_slots_array[i].almax))
+            else if(tutorial.is_al && (slot_al_fill[i] >= env.tut_slots_array[i].almax))
             {
                 // this lecture slot does not have enough active learning spaces for this active learning lecture
                 slot_mask.add(i);
@@ -332,7 +370,7 @@ public final class Functions
         if(lec_slot != -1)
         {
             // get the overlapping tutorial slots for this lecture slot
-            for(int i = 0; i < env.lecslot_tutslot.length; i++)
+            for(int i = 0; i < env.lecslot_tutslot[lec_slot].length; i++)
             {
                 slot_mask.add(env.lecslot_tutslot[lec_slot][i]);
             }
@@ -347,7 +385,7 @@ public final class Functions
             if(slot_id != -1)
             {
                 // get the overlapping tutorail slots for this lecture slot
-                for(int i = 0; i < env.lecslot_tutslot.length; i++)
+                for(int i = 0; i < env.lecslot_tutslot[slot_id].length; i++)
                 {
                     slot_mask.add(env.lecslot_tutslot[slot_id][i]);
                 }

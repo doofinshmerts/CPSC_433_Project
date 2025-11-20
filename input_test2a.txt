@@ -1,0 +1,23 @@
+Name:
+evening conflict with partial assignment
+
+Lecture slots:
+MO, 10:00, 1, 2, 2
+
+Tutorial slots:
+
+Lectures:
+CPSC 100 LEC 09, false
+
+Tutorials:
+
+Not compatible:
+
+Unwanted:
+
+Preferences:
+
+Pair:
+
+Partial assignments:
+CPSC 100 LEC 09, MO, 10:00

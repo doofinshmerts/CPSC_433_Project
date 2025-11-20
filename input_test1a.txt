@@ -1,0 +1,24 @@
+Name:
+Unwanted preassign conflict lecture
+
+Lecture slots:
+MO, 10:00, 1, 2, 2
+
+Tutorial slots:
+
+Lectures:
+CPSC 100 LEC 01, false
+
+Tutorials:
+
+Not compatible:
+
+Unwanted:
+CPSC 100 LEC 01, MO, 10:00
+
+Preferences:
+
+Pair:
+
+Partial assignments:
+CPSC 100 LEC 01, MO, 10:00
