@@ -27,15 +27,42 @@ public final class Functions
     /**
      * Solvable determines if problem pr is solvable
      * @param pr the problem to check
+     * @param env the environment
      * @return true if pr is solvable, false otherwise
      */ 
-    public static boolean Solvable(Problem pr)
+    public static boolean Solvable(Problem pr, Environment env)
     {
         // sudo code
         // if all lectures and tutorials have a non null assignment in pr, then the problem is solvable so return true
         // if there are lectures or tutorials with null assignments in pr, and there are no valid slots to assign the null
         // lectures or tutorials then the problem is solvable
-        return false;
+
+        // iterate through all lecs in pr
+        for (int i = 0; i < length(pr.lectures); i++) {
+            // if a lec assignment is null, check if it has any valid slot assignments
+            if (pr.lectures[i] == -1) {
+                int[] validLecs = ValidLectureSlots(env, i, pr);
+                // if there are valid slot assignments, solution can still be expanded
+                if (length(validLecs) > 0) {
+                    return false;
+                }
+            }
+        }
+
+        // iterate through all tutorials in pr
+        for (int i = 0; i < length(pr.tutorials); i++) {
+            // if a tut assignment is null, check if it has any valid assignments
+            if (pr.tutorials[i] == -1) {
+                int[] validTuts = ValidTutSlots(env, i, pr);
+                // if there are valid assignments, solution can be expanded still
+                if (length(validTuts) > 0) {
+                    return false;
+                }
+            }
+        }
+
+        //solution is not expandable
+        return true;
     }
 
     /**
