@@ -15,6 +15,29 @@ public class Problem
     {
     }
 
+    public Problem(Problem prob)
+    {
+        this.lectures = new int[prob.lectures.length];
+        this.tutorials = new int[prob.tutorials.length];
+        
+        int k = 0;
+        for(int i : prob.lectures)
+        {
+            this.lectures[k] = i;
+            k++;
+        }
+
+        k = 0;
+        for(int i : prob.tutorials)
+        {
+            this.tutorials[k] = i;
+            k++;
+        }
+
+        this.depth = prob.depth;
+        this.score = prob.score;
+    }
+
     /**
      * Assign a lecture to a slot
      * @param lec_id the id of the lecture to assign
@@ -66,5 +89,41 @@ public class Problem
         {
             tutorials[i] = -1;
         }
+    }
+
+    /**
+     * check to see if the problem has any lectures that have not been assigned
+     * @return true if all lectures in lectures[] have a slot value assigned to them, false otherwise
+     */
+    public boolean UnassignedLectures()
+    {
+        for(int i = 0; i < lectures.length; i++)
+        {
+            int assignment = lectures[i];
+            if(assignment == -1)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * check to see if the problem has any tutorials that have not been assigned
+     * @return true if all tutorials in tutorials[] have a slot value assigned to them, false otherwise
+     */
+    public boolean UnassignedTutorials()
+    {
+        for(int i = 0; i < tutorials.length; i++)
+        {
+            int assignment = tutorials[i];
+            if(assignment == -1)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
