@@ -50,6 +50,11 @@ public final class Functions
         // sudo code
         // evaluate the minboundscore of pr, if this score is greater than the best score found so far return true
         // return false otherwise
+
+        // get min bound score of pr and check it with the best score so far stored in env, if greater than return true
+        if (MinBoundScore(pr, env) > env.best_score)
+            return true;
+
         return false;
     }
 
