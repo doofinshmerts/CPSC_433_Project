@@ -10,7 +10,7 @@ public class AndSearch
     // the environment
     Environment env;
     // the tree in the form of a priority queue (next leaf to expand on top)
-    PriorityQueue<Problem> tree = new PriorityQueue<Problem>(10, new FLeafComparator());
+    PriorityQueue<Problem> tree;
 
     /**
      * initialization funciton for the AndSearch
@@ -20,6 +20,7 @@ public class AndSearch
     public AndSearch(Environment _env, Problem _s0)
     {
         env = _env;
+        tree = new PriorityQueue<Problem>(10, new FLeafComparator(_env));
         tree.add(_s0);
     }
 
@@ -30,85 +31,137 @@ public class AndSearch
      */
     public boolean RunSearch(Problem sf)
     {
-        // sudo code:
-        // get the problem from the top of the priority queue "tree"
-        // use ftrans to select the transition 
-        // use div to get the new problems
-        // push the new problems onto the priority queue "tree"
+        while (!tree.isEmpty() && env.iterations < env.max_iterations) {
+            Problem top_problem = tree.poll();
+            env.iterations++;
+            
+            // Check if this is a complete solution
+            if (!top_problem.UnassignedLectures() && !top_problem.UnassignedTutorials()) {
+                if (top_problem.score < env.best_score) {
+                    env.best_score = top_problem.score;
+                    env.best_sol = new Problem(top_problem);
+                    // Copy the solution to sf
+                    sf.lectures = top_problem.lectures.clone();
+                    sf.tutorials = top_problem.tutorials.clone();
+                    sf.depth = top_problem.depth;
+                    sf.score = top_problem.score;
+                    return true;
+                }
+                continue;
+            }
+            
+            // Prune if bound is worse than best solution
+            if (Functions.FBound(top_problem, env)) {
+                continue;
+            }
+            
+            // Expand the node
+            expandNode(top_problem);
+        }
+        return false;
+    }
 
-        Problem top_problem = tree.poll();
-        if(Functions.Solvable(top_problem))
-        {
-            // If the current problem is has sol = yes, no unassigned lectures or tutorials,
-            // and is a better solution than the previous, replace the previous solution with
-            // the current one
-            if(!top_problem.UnassignedLectures() && !top_problem.UnassignedTutorials() && top_problem.score < env.best_score)
-            {
-                env.best_score = top_problem.score;
-                env.best_sol = top_problem;
+    /**
+     * Expand a node by selecting the next variable to assign based on f_trans rules
+     * @param problem the problem to expand
+     */
+    private void expandNode(Problem problem) {
+        // Implement f_trans rules from your proposal:
+        // 1. "DIV 9" lectures with evening time slots first
+        // 2. lectures/tutorials that require active learning
+        // 3. all other lectures/tutorials
+        
+        Lecture nextLecture = findNextLectureToAssign(problem);
+        if (nextLecture != null) {
+            int[] validSlots = Functions.ValidLectureSlots(env, nextLecture.id, problem);
+            if (validSlots != null) {
+                for (int slot : validSlots) {
+                    Problem newProblem = new Problem(problem);
+                    newProblem.AssignLecture(nextLecture.id, slot);
+                    newProblem.depth++;
+                    newProblem.score = Functions.Eval(newProblem, env);
+                    tree.add(newProblem);
+                }
+            }
+            return;
+        }
+        
+        Tutorial nextTutorial = findNextTutorialToAssign(problem);
+        if (nextTutorial != null) {
+            int[] validSlots = Functions.ValidTutSlots(env, nextTutorial.id, problem);
+            if (validSlots != null) {
+                for (int slot : validSlots) {
+                    Problem newProblem = new Problem(problem);
+                    newProblem.AssignTutorial(nextTutorial.id, slot);
+                    newProblem.depth++;
+                    newProblem.score = Functions.Eval(newProblem, env);
+                    tree.add(newProblem);
+                }
+            }
+        }
+    }
+
+    /**
+     * Find the next lecture to assign based on f_trans rules
+     * @param problem the current problem state
+     * @return the next lecture to assign, or null if no lectures need assignment
+     */
+    private Lecture findNextLectureToAssign(Problem problem) {
+        // Rule 1: "DIV 9" lectures with evening time slots first
+        for (Lecture lec : env.lectures) {
+            if (problem.lectures[lec.id] == -1 && isDiv9Lecture(lec)) {
+                return lec;
             }
         }
         
-        // If this problem can be pruned, then it is removed from the tree
-        else if(Functions.FBound(top_problem, env))
-        {
-            
-        }
-
-        // Otherwise, create new problem derivations by adding the next lecture/tutorial to all possible valid slots
-        else
-        {
-            // Get the first lecture in env.lectures that has not been assigned
-            Lecture unassigned_lecture = null;
-            for(Lecture lec : env.lectures)
-            {
-                if (top_problem.lectures[lec.id] == -1)
-                {
-                    unassigned_lecture = lec;
-                    break;
-                }
-            }
-
-            // If an unassigned lecture was found, add all problem derivations that can stem from adding it to top_problem
-            if(unassigned_lecture != null)
-            {
-                int[] valid_slots = Functions.ValidLectureSlots(env, unassigned_lecture.id, top_problem);
-                for(int slot : valid_slots)
-                {
-                    Problem new_problem = new Problem(top_problem);
-                    new_problem.AssignLecture(unassigned_lecture.id, slot);
-                    new_problem.depth++;
-                    new_problem.score = Functions.Eval(new_problem, env);
-                    tree.add(new_problem);
-                }
-            }
-
-            // Get the first tutorial in env.lectures that has not been assigned
-            Tutorial unassigned_tutorial = null;
-            for(Tutorial tut : env.tutorials)
-            {
-                if (top_problem.lectures[tut.id] == -1)
-                {
-                    unassigned_tutorial = tut;
-                    break;
-                }
-            }
-
-            // If an unassigned tutorial was found, add all problem derivations that can stem from adding it to top_problem
-            if(unassigned_tutorial != null)
-            {
-                int[] valid_slots = Functions.ValidTutSlots(env, unassigned_tutorial.id, top_problem);
-                for(int slot : valid_slots)
-                {
-                    Problem new_problem = new Problem(top_problem);
-                    new_problem.AssignTutorial(unassigned_tutorial.id, slot);
-                    new_problem.depth++;
-                    new_problem.score = Functions.Eval(new_problem, env);
-                    tree.add(new_problem);
-                }
+        // Rule 2: Active learning lectures
+        for (Lecture lec : env.lectures) {
+            if (problem.lectures[lec.id] == -1 && lec.is_al) {
+                return lec;
             }
         }
-        return false;
+        
+        // Rule 3: All other lectures
+        for (Lecture lec : env.lectures) {
+            if (problem.lectures[lec.id] == -1) {
+                return lec;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Find the next tutorial to assign based on f_trans rules
+     * @param problem the current problem state
+     * @return the next tutorial to assign, or null if no tutorials need assignment
+     */
+    private Tutorial findNextTutorialToAssign(Problem problem) {
+        // Rule 2: Active learning tutorials first
+        for (Tutorial tut : env.tutorials) {
+            if (problem.tutorials[tut.id] == -1 && tut.is_al) {
+                return tut;
+            }
+        }
+        
+        // Rule 3: All other tutorials
+        for (Tutorial tut : env.tutorials) {
+            if (problem.tutorials[tut.id] == -1) {
+                return tut;
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Check if a lecture is a "DIV 9" evening lecture
+     * @param lecture the lecture to check
+     * @return true if it's a DIV 9 lecture
+     */
+    private boolean isDiv9Lecture(Lecture lecture) {
+        // Check if this is an evening lecture (lecture number 9 indicates evening)
+        return lecture.lec_num == 9 || lecture.is_evng;
     }
 }
 
@@ -117,6 +170,16 @@ public class AndSearch
  */
 class FLeafComparator implements Comparator<Problem>
 {
+    private Environment env;
+    
+    public FLeafComparator() {
+        // Default constructor
+    }
+    
+    public FLeafComparator(Environment environment) {
+        this.env = environment;
+    }
+    
     /**
      * This methode implements the f_leaf function to sort problems p1 and p2
      * @param p1 the first problem to sort
@@ -125,55 +188,99 @@ class FLeafComparator implements Comparator<Problem>
      */ 
     public int compare(Problem p1, Problem p2)
     {
-        // sudo code:
-        // sort on the following priority
+        // Sort on the following priority (from your project proposal):
         // 1: solvable nodes go first
-        // 2: deepest nodes go first
+        // 2: deepest nodes go first  
         // 3: lowest score according to MinBoundScore go first
-        // 4: tie break on problem unique id 
+        // 4: tie break on problem unique id
 
-        // Sort by solvable
-        boolean p1_solvable = Functions.Solvable(p1);
-        boolean p2_solvable = Functions.Solvable(p2);
+        // Create a temporary environment if none is provided - DECLARE FIRST!
+        Environment tempEnv = (env != null) ? env : new Environment();
+        
+        // NOW use tempEnv in the function calls
+        boolean p1_solvable = Functions.Solvable(p1, tempEnv);
+        boolean p2_solvable = Functions.Solvable(p2, tempEnv);
 
-        if (p1_solvable && !p2_solvable)
-        {
+        if (p1_solvable && !p2_solvable) {
             return -1;
         }
-        if (!p1_solvable && p2_solvable)
-        {
+        if (!p1_solvable && p2_solvable) {
             return 1;
         }
 
-        // Sort by depth
-        if (p1.depth > p2.depth)
-        {
+        // Sort by depth (deepest nodes first)
+        if (p1.depth > p2.depth) {
             return -1;
         }
-        if (p1.depth < p2.depth)
-        {
+        if (p1.depth < p2.depth) {
             return 1;
         }
 
-        // Sort by MinBoundScore
-        // ### TODO ###: Replace minboundscore with Kevlam's MinBoundScore() for Problem.java
-        // if (p1.minboundscore < p2.minboundscore)
-        // {
-        //     return -1;
-        // }
-        // if (p1.minboundscore > p2.minboundscore)
-        // {
-        //     return 1;
-        // }
-
-        // Sort by id
-        if (p1.hashCode() > p2.hashCode())
-        {
-            return 1;
-        }
-        else
-        {
+        // Sort by MinBoundScore (lowest score first)
+        int score1 = Functions.MinBoundScore(p1, tempEnv);
+        int score2 = Functions.MinBoundScore(p2, tempEnv);
+        
+        if (score1 < score2) {
             return -1;
         }
+        if (score1 > score2) {
+            return 1;
+        }
+
+        // Sort by closeness to fulfilling lecturemin and tutorialmin
+        int p1MinFillDiscrepancy = calculateMinFillDiscrepancy(p1, tempEnv);
+        int p2MinFillDiscrepancy = calculateMinFillDiscrepancy(p2, tempEnv);
+        
+        if (p1MinFillDiscrepancy < p2MinFillDiscrepancy) {
+            return -1;
+        }
+        if (p1MinFillDiscrepancy > p2MinFillDiscrepancy) {
+            return 1;
+        }
+
+        // Final tie break: use hash code
+        return Integer.compare(p1.hashCode(), p2.hashCode());
+    }
+    
+    /**
+     * Calculate the sum of discrepancies between actual and needed values for min fill constraints
+     * @param problem the problem to evaluate
+     * @param env the environment
+     * @return the total discrepancy
+     */
+    private int calculateMinFillDiscrepancy(Problem problem, Environment env) {
+        int discrepancy = 0;
+        
+        // Count lectures in each slot
+        int[] lecCount = new int[env.lec_slots_array.length];
+        for (int lectureSlot : problem.lectures) {
+            if (lectureSlot != -1) {
+                lecCount[lectureSlot]++;
+            }
+        }
+        
+        // Calculate discrepancies for lecture slots
+        for (int i = 0; i < lecCount.length; i++) {
+            if (lecCount[i] < env.lec_slots_array[i].min) {
+                discrepancy += (env.lec_slots_array[i].min - lecCount[i]);
+            }
+        }
+        
+        // Count tutorials in each slot
+        int[] tutCount = new int[env.tut_slots_array.length];
+        for (int tutorialSlot : problem.tutorials) {
+            if (tutorialSlot != -1) {
+                tutCount[tutorialSlot]++;
+            }
+        }
+        
+        // Calculate discrepancies for tutorial slots
+        for (int i = 0; i < tutCount.length; i++) {
+            if (tutCount[i] < env.tut_slots_array[i].min) {
+                discrepancy += (env.tut_slots_array[i].min - tutCount[i]);
+            }
+        }
+        
+        return discrepancy;
     }
 }
