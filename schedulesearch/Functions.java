@@ -68,7 +68,29 @@ public final class Functions
         // sudo code 
         // during each expansion, only one lecture or tutorial is assigned, so depth is the number of tutorials and lectures assigned
         // maybe add a feild to Problem that records the depth in the tree and just return that
-        return 0;
+
+        // variable for depth value
+        int depth = 0;
+        // iterate through all lectures
+        for (int i = 0; i < length(pr.lectures); i++) {
+            // if lecture is null then continue looping
+            if (pr.lectures[i] == -1) {
+                continue;
+            }
+            // otherwise this lecture has been assigned so increase depth count by 1
+            depth++;
+        }
+        // iterate through all tutorials
+        for (int i = 0; i < length(pr.tutorials); i++) {
+            // if tutorial is null then continue looping
+            if (pr.tutorials[i] == -1) {
+                continue;
+            }
+            // otherwise this tutorial has been assigned so increase depth count by 1
+            depth++;
+        }
+        // return the depth count
+        return depth;
     }
 
     /**
