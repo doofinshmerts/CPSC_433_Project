@@ -369,15 +369,19 @@ public final class Functions
         }
     
         // find slots of the corresponding lecture ##########################################################################################################
-        // get the slot of the parent lecture
-        int lec_slot = pr.lectures[tutorial.lec_id];
-        if(lec_slot != -1)
+
+        for(int i = 0; i < tutorial.parent_lectures.length; i++)
         {
-            // get the overlapping tutorial slots for this lecture slot
-            for(int i = 0; i < env.lecslot_tutslot[lec_slot].length; i++)
+            // the id of the lecture slot
+            int id = pr.lectures[tutorial.parent_lectures[i]];
+            if(id != -1)
             {
-                slot_mask.add(env.lecslot_tutslot[lec_slot][i]);
-            }
+                // add the ids of the tutorial slots that overlap this lecture slot
+                for(int j = 0; j < env.lecslot_tutslot[id].length; j++)
+                    {
+                        slot_mask.add(env.lecslot_tutslot[id][j]);
+                    }
+            }            
         }
 
         // find not compatible slot assignments

@@ -61,7 +61,7 @@ public class Environment
     // the array of lectures at 5xx level
     int[] lectures_5xx;
     // the map from sections to lecture ids
-    HashMap<Integer, Integer[]> sections = new HashMap<Integer, Integer[]>();
+    HashMap<Integer, int[]> sections = new HashMap<Integer, int[]>();
     // the array of pairs used to implement Pair
     Pair[] pairs;
     // the map of slot lecture hash to slot
