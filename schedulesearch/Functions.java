@@ -77,6 +77,9 @@ public final class Functions
         // sudo code
         // evaluate the minboundscore of pr, if this score is greater than the best score found so far return true
         // return false otherwise
+
+        int mbs = MinBoundScore(pr, env);
+        if (mbs > env.best_score) return true;
         return false;
     }
 
@@ -90,7 +93,7 @@ public final class Functions
         // sudo code 
         // during each expansion, only one lecture or tutorial is assigned, so depth is the number of tutorials and lectures assigned
         // maybe add a feild to Problem that records the depth in the tree and just return that
-        return 0;
+        return pr.depth;
     }
 
     /**
