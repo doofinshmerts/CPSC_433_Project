@@ -38,7 +38,7 @@ public final class Functions
         // lectures or tutorials then the problem is solvable
 
         // iterate through all lecs in pr
-        for (int i = 0; i < length(pr.lectures); i++) {
+        for (int i = 0; i < pr.lectures.length; i++) {
             // if a lec assignment is null, check if it has any valid slot assignments
             if (pr.lectures[i] == -1) {
                 int[] validLecs = ValidLectureSlots(env, i, pr);
@@ -50,7 +50,7 @@ public final class Functions
         }
 
         // iterate through all tutorials in pr
-        for (int i = 0; i < length(pr.tutorials); i++) {
+        for (int i = 0; i < pr.tutorials.length; i++) {
             // if a tut assignment is null, check if it has any valid assignments
             if (pr.tutorials[i] == -1) {
                 int[] validTuts = ValidTutSlots(env, i, pr);
@@ -118,8 +118,34 @@ public final class Functions
 
     private static int EvalPref(Problem pr, Environment env)
     {
-        return 0;
+        int lecPenalty = 0;
+        int tutPenalty = 0;
+
+        // Sum of lecture penalties
+        for (int i = 0; i < pr.lectures.length; i++) {
+            int slotId = pr.lectures[i];
+
+            // skip unassigned
+            if (slotId >= 0) { 
+                Lecture lec = env.lectures[i];
+                lecPenalty += lec.preferences.getOrDefault(slotId, 0);
+            }
+        }
+
+        // Sum of tutorial penalites
+        for (int i = 0; i < pr.tutorials.length; i++) {
+            int slotId = pr.tutorials[i];
+
+            //skip unassigned
+            if (slotId >= 0) {
+                Tutorial tut = env.tutorials[i];
+                tutPenalty += tut.preferences.getOrDefault(slotId, 0);
+            }
+        }
+
+        return lecPenalty + tutPenalty;
     }
+
     
     private static int EvalPair(Problem pr, Environment env)
     {
