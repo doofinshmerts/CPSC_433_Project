@@ -360,6 +360,8 @@ public final class InputParser
             return false;
         }
 
+        // environment must be setup inorder to work
+        env.SetupEnvironment();
         // Print the results of the parse 
         PrintParseResults(env, part_assign_lec, part_assign_tut);
 
@@ -439,8 +441,11 @@ public final class InputParser
         }
 
         // print the current form of the problem
+        System.out.println("Initial problem after partial assignments");
         Functions.PrintProblem(s0, env);
 
+ 
+        
         // close the file reader and file buffer
         try{
             reader.close();
@@ -661,6 +666,35 @@ public final class InputParser
             else
             {
                 env.tutorials[p.id2].PrintData();
+            }
+        }
+
+        
+        // print the some basic indexing checks
+        System.out.println("\nChecks ###############################################################################");
+        for(int i = 0; i < env.lectures.length; i++)
+        {
+            // this is important for checking that this system is working
+            System.out.println(String.format("index: %d id: %d",i, env.lectures[i].id));
+        }
+
+        for(int i = 0; i < env.tutorials.length; i++)
+        {
+            System.out.println(String.format("index: %d id: %d", i, env.tutorials[i].id));
+        }
+
+        // print the constraint sorting order
+        System.out.println("\nConstraint sorting order##################################################################\n");
+
+        for(int i = 0; i< env.constraint_ordering.length; i++)
+        {
+            if(env.constraint_ordering[i].is_lec)
+            {
+                env.lectures[env.constraint_ordering[i].id].PrintData();
+            }
+            else
+            {
+                env.tutorials[env.constraint_ordering[i].id].PrintData();
             }
         }
 
