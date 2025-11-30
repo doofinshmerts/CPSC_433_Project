@@ -320,11 +320,7 @@ public final class InputParser
         // Print the results of the parse 
         PrintParseResults(env, part_assign_lec, part_assign_tut);
 
-        // Add the special constraints #########################################################################################################################################
-        // remove any lecture slots that overlap tuesdays at 11:00 to 12:30 (Handled in Functions.ValidLectureSlots)
-        
-        // Special Constraint: CPSC 851 / CPSC 913
-        // If CPSC 351 exists -> Schedule CPSC 851 TUT at TU 18:00
+        // Special Constraint: CPSC 851 / CPSC 913 dependencies
         if(lec_tut_data.containsKey("CPSC 351"))
         {
             // Find CPSC 851 TUT
@@ -413,13 +409,6 @@ public final class InputParser
                 }
             }
         }
-        
-        // if exists add partial constraint CPSC 851 to TU 18:00
-        // if exists add partial constraint CPSC 913 to TU 18:00
-        // if exists add unwanted for any CPSC 351 to time overlapping 18:00 to 19:00
-        // if exists add unwanted for any CPSC 413 to time overlapping 18:00 to 19:00
-        
-        // apply the partial assignments to the starting state #################################################################################################################
         
         // create an initial problem
         s0.SetupProblem(env.num_lectures, env.num_tutorials);
