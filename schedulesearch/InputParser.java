@@ -342,7 +342,7 @@ public final class InputParser
         ArrayList<Pair> pairs = new ArrayList<Pair>();
         if(!ParsePairs(bufferedReader, lec_tut_data, pairs))
         {
-            System.out.println("Could not get preferences data from file: " + input_file);
+            System.out.println("Could not get Pairs data from file: " + input_file);
             return false;
         }
         

@@ -386,9 +386,9 @@ public final class Functions
             {
                 // add the ids of the lectures that overlap this tutorial
                 for(int j = 0; j < env.tutslot_lecslot[id].length; j++)
-                    {
-                        slot_mask.add(env.tutslot_lecslot[id][j]);
-                    }
+                {
+                    slot_mask.add(env.tutslot_lecslot[id][j]);
+                }
             }            
         }
 

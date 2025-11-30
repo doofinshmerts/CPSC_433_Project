@@ -1,4 +1,4 @@
 #!/bin/sh
 make clean
 make all
-java -jar ./build/Build.jar example_input4.txt 1 2 3 4 5 6 7 8 100000 1000
+java -jar ./build/Build.jar input_test12.txt 1 2 3 4 5 6 1 8 100000000 1

@@ -344,7 +344,7 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         }
         else
         {
-            return 0;
+            return -1;
         }
 
     }
@@ -504,7 +504,7 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         }
         else
         {
-            return 0;
+            return -1;
         }
     }
 }
