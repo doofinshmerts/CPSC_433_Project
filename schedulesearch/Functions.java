@@ -10,41 +10,28 @@ import java.util.Comparator;
  */
 public final class Functions
 {
-    /**
-     * MinBoundScore calculates the minimum score of a problem that cannot do better than
-     * @param pr the problem to evaluate
-     * @param env the environment with the penalties and weights
-     * @return the score of the problem
-     */ 
-    public static int MinBoundScore(Problem pr, Environment env)
-    {
-        // EvalPref and EvalSecDiff are permenant scores that cannot be reduced as more assignments are made
-        int sum = EvalPref(pr, env);
-        sum += EvalSecDiff(pr, env);
-        return sum;
-    }
+
 
     /**
-     * Solvable determines if problem pr is solvable
+     * Solvable determines if problem pr is solvable in the 
      * @param pr the problem to check
      * @param env the environment
      * @return true if pr is solvable, false otherwise
      */ 
-    public static boolean Solvable(Problem pr, Environment env)
+    public static boolean NotSatisfiable(Problem pr, Environment env)
     {
         // sudo code
-        // if all lectures and tutorials have a non null assignment in pr, then the problem is solvable so return true
-        // if there are lectures or tutorials with null assignments in pr, and there are no valid slots to assign the null
-        // lectures or tutorials then the problem is solvable
+        // if even a single lecture or tutorial has no valid slot assignments then return ture
 
         // iterate through all lecs in pr
         for (int i = 0; i < pr.lectures.length; i++) {
             // if a lec assignment is null, check if it has any valid slot assignments
-            if (pr.lectures[i] == -1) {
+            if (pr.lectures[i] == -1) 
+            {
                 int[] validLecs = ValidLectureSlots(env, i, pr);
-                // if there are valid slot assignments, solution can still be expanded
-                if (validLecs.length > 0) {
-                    return false;
+                if(validLecs == null)
+                {
+                    return true;
                 }
             }
         }
@@ -52,17 +39,19 @@ public final class Functions
         // iterate through all tutorials in pr
         for (int i = 0; i < pr.tutorials.length; i++) {
             // if a tut assignment is null, check if it has any valid assignments
-            if (pr.tutorials[i] == -1) {
+            if (pr.tutorials[i] == -1) 
+            {
                 int[] validTuts = ValidTutSlots(env, i, pr);
                 // if there are valid assignments, solution can be expanded still
-                if (validTuts.length > 0) {
-                    return false;
+                if (validTuts == null) 
+                {
+                    return true;
                 }
             }
         }
 
-        //solution is not expandable
-        return true;
+        //solution expandable
+        return false;
     }
 
     /**
@@ -119,6 +108,20 @@ public final class Functions
     }
 
     /**
+     * MinBoundScore calculates the minimum score of a problem that cannot do better than
+     * @param pr the problem to evaluate
+     * @param env the environment with the penalties and weights
+     * @return the score of the problem
+     */ 
+    public static int MinBoundScore(Problem pr, Environment env)
+    {
+        // EvalPref and EvalSecDiff are permenant scores that cannot be reduced as more assignments are made
+        int sum = EvalPref(pr, env);
+        sum += EvalSecDiff(pr, env);
+        return sum;
+    }
+
+    /**
      * Eval calculates the score of a problem assignment
      * @param pr the problem to score
      * @param env the environment with the scoring parameters
@@ -133,49 +136,41 @@ public final class Functions
         return sum;
     }
 
+    /**
+     * the penalty from the minimum assignment requirements not being filled
+     * @param pr the problem to rank
+     * @param env the environment data
+     */
     private static int EvalMinFilled(Problem pr, Environment env)
     {
         // Variables for lecture penalty and tutorial penalty
         int lec_penalty = 0;
         int tut_penalty = 0;
 
-        // Array to store lecture counts for each lecture slot
-        int[] lec_counts = new int[env.lec_slots_array.length];
-        // iterate through every lectures that have been assigned
-        for (int lec_id = 0; lec_id < pr.lectures.length; lec_id++) {
-            // get the slot_id that the lecture has been assigned
-            int slot_id = pr.lectures[lec_id];
-            // if >= 0 then this lecture has been assigned and increment count for the slot_id by 1
-            if (slot_id >= 0) {
-                lec_counts[slot_id]++;
+        // go through each slot and find the differenc between min filled and actual fill
+        for(int i = 0; i < pr.lec_slot_fill.length; i++)
+        {
+            int diff = env.lec_slots_array[i].min - pr.lec_slot_fill[i];
+
+            // this only should be counted if the number filled is less than the minimum required
+            if(diff > 0)
+            {
+                lec_penalty += diff;
             }
         }
-        // Repeat for tutorials
-        // Array to store tutorial counts for each tutorial slot
-        int [] tut_counts = new int[env.tut_slots_array.length];
-        // iterate through every tutorial that's been assigned
-        for (int tut_id = 0; tut_id < pr.tutorials.length; tut_id++) {
-            // get the slot_id that the tutorial has been assigned
-            int slot_id = pr.tutorials[tut_id];
-            // if >= 0 then this tutorial has been assigned and increment count for the slot_id by 1
-            if (slot_id >= 0) {
-                tut_counts[slot_id]++;
+
+        for(int i = 0; i < pr.tut_slot_fill.length; i++)
+        {
+            int diff = env.tut_slots_array[i].min - pr.tut_slot_fill[i];
+            
+            // this only should be counted if the number filled is less than the minimum required
+            if(diff > 0)
+            {
+                tut_penalty += diff;
             }
         }
-        // get lecture penalty
-        for (int i = 0; i < env.lec_slots_array.length; i++) {
-            int count = lec_counts[i];
-            int p = Math.max(env.lec_slots_array[i].min - count, 0);
-            lec_penalty += p * env.pen_lecturemin;
-        }
-        // get tutorial penalty
-        for (int i = 0; i < env.tut_slots_array.length; i++) {
-            int count = tut_counts[i];
-            int p = Math.max(env.tut_slots_array[i].min - count, 0);
-            tut_penalty += p * env.pen_tutorialmin;
-        }
-        // return the summation of lecture penalty and tutorial penalty
-        return lec_penalty + tut_penalty;
+
+        return (lec_penalty*env.pen_lecturemin + tut_penalty*env.pen_tutorialmin);
     }
 
     private static int EvalPref(Problem pr, Environment env)
@@ -186,11 +181,10 @@ public final class Functions
         // Sum of lecture penalties
         for (int i = 0; i < pr.lectures.length; i++) {
             int slotId = pr.lectures[i];
-
             // skip unassigned
-            if (slotId >= 0) { 
-                Lecture lec = env.lectures[i];
-                lecPenalty += lec.preferences.getOrDefault(slotId, 0);
+            if (env.lectures[i].preferences.containsKey(slotId)) 
+            {
+                lecPenalty += env.lectures[i].preferences.get(slotId);
             }
         }
 
@@ -199,13 +193,13 @@ public final class Functions
             int slotId = pr.tutorials[i];
 
             //skip unassigned
-            if (slotId >= 0) {
-                Tutorial tut = env.tutorials[i];
-                tutPenalty += tut.preferences.getOrDefault(slotId, 0);
+            if (env.tutorials[i].preferences.containsKey(slotId))
+            {
+                tutPenalty += env.tutorials[i].preferences.get(slotId);
             }
         }
 
-        return lecPenalty + tutPenalty;
+        return (env.total_pref_sum - (lecPenalty + tutPenalty));
     }
 
     
@@ -215,27 +209,54 @@ public final class Functions
         int penalty = 0;
         int a;
         int b;
+
         // go through each pair
-        for (Pair pair : env.pairs) {
-            // if first item is an assigned lecture, then set a accordingly
-            if (pair.is_lec1) {
+        for (Pair pair : env.pairs) 
+        {
+            // case1: both are lectures
+            if(pair.is_lec1 && pair.is_lec2)
+            {
+                // because they are both lectures we simply verify that the id is the same
                 a = pr.lectures[pair.id1];
-            } // otherwise its an assigned tutorial and we set it accordingly as well
-            else {
-                a = pr.tutorials[pair.id1];
-            } // repeat same process for 2nd item
-            if (pair.is_lec2) {
                 b = pr.lectures[pair.id2];
+                if(a >= 0 && (a != b))
+                {
+                    penalty += env.pen_notpaired;
+                }
             }
-            else {
+            // case2: lecture and tutorial
+            else if(pair.is_lec1 && !pair.is_lec2)
+            {
+                // the starting time of a tutorial slot can always be mapped to a single lecture slot 
+                a = pr.lectures[pair.id1];
+                b = env.tutid_to_lecid[pr.tutorials[pair.id2]];
+                if(a >= 0 && (a != b))
+                {
+                    penalty += env.pen_notpaired;
+                }
+            }
+            // case3; tutorial and lecture
+            else if(!pair.is_lec1 && pair.is_lec2)
+            {
+                // the starting time of a tutorial slot can always be mapped to a single lecture slot 
+                a = pr.lectures[pair.id2];
+                b = env.tutid_to_lecid[pr.tutorials[pair.id1]];
+                if(a >= 0 && (a != b))
+                {
+                    penalty += env.pen_notpaired;
+                }
+            }
+            // case4; tutorial and tutorial
+            else
+            {
+                // because they are both tutorials we simply verify that the id is the same
+                a = pr.tutorials[pair.id1];
                 b = pr.tutorials[pair.id2];
+                if(a >= 0 && (a != b))
+                {
+                    penalty += env.pen_notpaired;
+                }
             }
-            // check to see if a or b is actually assigned by checking if its value is >= 0, then also check if a is not equal to b
-            // assign(a) != assign(b) -> apply penalty
-            if (a >=0 && b >= 0 && a != b) {
-                penalty += env.pen_notpaired;
-            }
-            // if both in same slot or one unassigned then no penalty is added to the accumulator, assign(a) == assign(b) -> penalty = 0
         }
 
         return penalty;
@@ -243,7 +264,78 @@ public final class Functions
 
     private static int EvalSecDiff(Problem pr, Environment env)
     {
-        return 0;
+        int section_penalty = 0;
+
+        // loop over every section and find number of overlapping lectures
+        for(int[] lecs : env.sections.values())
+        {
+            // record which elements we have seen
+            HashSet<Integer> found_slots = new HashSet<Integer>();
+
+            // loop through the lectures in this section
+            for(int i = 0; i < lecs.length; i++)
+            {
+                // get the slot assigned to this lecture
+                int slot_id = pr.lectures[lecs[i]];
+                if(slot_id >= 0)
+                {
+                    // if this slot has been seen before then add to the penalty
+                    // otherwise add this slot to the set of found slots
+                    if(found_slots.contains(slot_id))
+                    {
+                        section_penalty++;
+                    }
+                    else
+                    {
+                        found_slots.add(slot_id);
+                    }
+                }
+            }
+        }
+
+        return (section_penalty * env.pen_section);
+    }
+
+    /**
+     * Ftrans selects the next lecture or tutorial based on the constraint rank 
+     * 
+     */
+    public static LecOrTutId Ftrans(Problem pr, Environment env)
+    {
+        // iterate through the sorted array of lectures and tutorials until we find one that has not yet been assigned
+        for(int i = (pr.last_selection+1); i < env.constraint_ordering.length; i++)
+        {
+            // the lecture or tutorial
+            LecOrTutId temp = env.constraint_ordering[i];
+            // check to see if this lecture/tutorial has been assigned
+            if(temp.is_lec)
+            {  
+                // lecture
+                int slot_id = pr.lectures[temp.id];
+                if(slot_id == -1)
+                {
+                    // increment the last selection number to the current index
+                    pr.last_selection = i;
+                    return temp;
+
+                }
+
+            }
+            else
+            {
+                // tutorial
+                int slot_id = pr.tutorials[temp.id];
+                if(slot_id == -1)
+                {
+                    // increment the last selection number to the current index
+                    pr.last_selection = i;
+                    return temp;
+                }
+            }
+        }
+
+        // something is not right if we get here
+        return null;
     }
 
     /**
@@ -272,41 +364,16 @@ public final class Functions
         HashSet<Integer> slot_mask = new HashSet<Integer>();
 
         // Find over capacity slots ####################################################################################################################
-        // initialize an array for holding the slots fill values
-        int[] slot_fill = new int[env.lec_slots_array.length];
-        // initialize an array for holding the al slots fill values
-        int[] slot_al_fill = new int[env.lec_slots_array.length];
-
-        // ### TODO ###: replace this fill counting by recording the fill values in the Problem class
-        for(int i = 0; i < slot_fill.length; i++)
-        {
-            slot_fill[i] = 0;
-            slot_al_fill[i] = 0;
-        }
-
-        // count the number of elements in each slot
-        for(int i = 0; i < pr.lectures.length; i++)
-        {
-            if(pr.lectures[i] != -1)
-            {
-                slot_fill[pr.lectures[i]]++;
-                if(env.lectures[i].is_al)
-                {
-                    slot_al_fill[pr.lectures[i]]++;
-                }
-            }
-        }
-
         // if the slot is at capacity then add it to the mask
-        for(int i = 0; i < slot_fill.length; i++)
+        for(int i = 0; i < pr.lec_slot_fill.length; i++)
         {
-            if(slot_fill[i] >= env.lec_slots_array[i].max)
+            if(pr.lec_slot_fill[i] >= env.lec_slots_array[i].max)
             {
                 // this lecture slot does not have enough spaces for this lecture
                 slot_mask.add(i);
                 continue;
             }
-            else if(lecture.is_al && (slot_al_fill[i] >= env.lec_slots_array[i].almax))
+            else if(lecture.is_al && (pr.lec_al_slot_fill[i] >= env.lec_slots_array[i].almax))
             {
                 // this lecture slot does not have enough active learning spaces for this active learning lecture
                 slot_mask.add(i);
@@ -465,41 +532,16 @@ public final class Functions
         HashSet<Integer> slot_mask = new HashSet<Integer>();
 
         // Find over capacity slots ####################################################################################################################
-        // initialize an array for holding the slots fill values
-        int[] slot_fill = new int[env.tut_slots_array.length];
-        // initialize an array for holding the al slots fill values
-        int[] slot_al_fill = new int[env.tut_slots_array.length];
-
-        // ### TODO ###: replace this fill counting by recording the fill values in the Problem class
-        for(int i = 0; i < slot_fill.length; i++)
-        {
-            slot_fill[i] = 0;
-            slot_al_fill[i] = 0;
-        }
-
-        // count the number of elements in each slot
-        for(int i = 0; i < pr.tutorials.length; i++)
-        {
-            if(pr.tutorials[i] != -1)
-            {
-                slot_fill[pr.tutorials[i]]++;
-                if(env.tutorials[i].is_al)
-                {
-                    slot_al_fill[pr.tutorials[i]]++;
-                }
-            }
-        }
-
         // if the slot is at capacity then add it to the mask
-        for(int i = 0; i < slot_fill.length; i++)
+        for(int i = 0; i < pr.tut_slot_fill.length; i++)
         {
-            if(slot_fill[i] >= env.tut_slots_array[i].max)
+            if(pr.tut_slot_fill[i] >= env.tut_slots_array[i].max)
             {
                 // this lecture slot does not have enough spaces for this lecture
                 slot_mask.add(i);
                 continue;
             }
-            else if(tutorial.is_al && (slot_al_fill[i] >= env.tut_slots_array[i].almax))
+            else if(tutorial.is_al && (pr.tut_al_slot_fill[i] >= env.tut_slots_array[i].almax))
             {
                 // this lecture slot does not have enough active learning spaces for this active learning lecture
                 slot_mask.add(i);

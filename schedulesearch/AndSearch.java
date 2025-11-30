@@ -25,90 +25,147 @@ public class AndSearch
 
     /**
      * run the and tree search
-     * @param sf the final state to return
+     * best solution is returned in the environment
      * @return true if a solution could be found, otherwise false
      */
-    public boolean RunSearch(Problem sf)
+    public boolean RunSearch()
+    {
+        // start a timer
+        long start_time = System.currentTimeMillis();
+        long current_time = start_time;
+        long elapsed_time = 0;
+
+        // start the loop
+        for(int i = 0; i < env.max_iterations; i++)
+        {  
+            // timing
+            current_time = System.currentTimeMillis();
+            elapsed_time = (current_time - start_time);
+
+            System.out.println(String.format("Elapsed Time: %d, Iterations: %d", elapsed_time, i));
+
+            // time bound
+            if(elapsed_time >= env.time_limit)
+            {
+                System.out.println("Out of time");
+                break;
+            }
+
+            // iteration bound
+            if(i > env.max_iterations)
+            {
+                System.out.println("max iterations");
+                break;
+            }
+
+            // ensure that the queue is not empty
+            if(tree.isEmpty())
+            {
+                System.out.println("tree fully explored");
+                break;
+            }
+
+            // run a search step
+            SearchStep();
+        }
+
+        // indicate if a solution has been found or not
+        if(env.solution_found)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    /**
+     * run a single search step
+     */
+    private void SearchStep()
     {
         // sudo code:
         // get the problem from the top of the priority queue "tree"
-        // use ftrans to select the transition 
-        // use div to get the new problems
+        // check to see if it is boundable
+        // check to see if the problem has all lectures and tutorials assigned (much easier that solvable) 
+        // check to see if it is solvable 
+        // use constrain ordering as ftrans to select to next lectrue or tutorial  
+        // use div(valid lectrue slots or valid tutorail slots) to get the new problems
         // push the new problems onto the priority queue "tree"
 
+        // get the best problem
         Problem top_problem = tree.poll();
-        if(Functions.Solvable(top_problem, env))
+
+        // check to see if the problem is pruneable
+        if(top_problem.min_score >= env.best_score)
         {
-            // If the current problem is has sol = yes, no unassigned lectures or tutorials,
-            // and is a better solution than the previous, replace the previous solution with
-            // the current one
-            if(!top_problem.UnassignedLectures() && !top_problem.UnassignedTutorials() && top_problem.score < env.best_score)
-            {
-                env.best_score = top_problem.score;
-                env.best_sol = top_problem;
-            }
-        }
-        
-        // If this problem can be pruned, then it is removed from the tree
-        else if(Functions.FBound(top_problem, env))
-        {
-            
+            // simply do not put the problem back into the queue and return
+            return;   
         }
 
-        // Otherwise, create new problem derivations by adding the next lecture/tutorial to all possible valid slots
+        // check to see if the problem has all lectures and tutorials assigned
+        if(top_problem.AllAssigned())
+        {
+            // try to get this problems score and record it if it is the best
+            int score = Functions.Eval(top_problem, env);
+            //System.out.println("score: " + score);
+            if(score < env.best_score)
+            {
+                //Functions.PrintProblem(top_problem,env);
+                env.best_score = score;
+                env.best_sol = top_problem;
+                env.solution_found = true;
+            }
+
+            return;
+        }
+
+        // check to see if it is solvable
+        if(Functions.NotSatisfiable(top_problem, env))
+        {
+            // solvable in this case means that the constraints could not be met with the existing assignments
+            // so do not put this back into the tree
+            return;
+        }
+
+        // select the next lecture or tutorial based on the constraint rank 
+        LecOrTutId selected = Functions.Ftrans(top_problem, env);
+
+        // determine if lecture or tutorial
+        if(selected.is_lec)
+        {
+            // determine if this is an active learning lecture
+            boolean al = env.lectures[selected.id].is_al;
+           
+            // add all problem derivations that can stem from top_problem
+            int[] valid_slots = Functions.ValidLectureSlots(env, selected.id, top_problem);
+            // try all possible assignments
+            for(int slot : valid_slots)
+            {
+                //System.out.println("\nAssigning lecture: " + selected.id + ", to slot: " + slot);
+                Problem new_problem = new Problem(top_problem);
+                new_problem.AssignLecture(selected.id, slot, al);
+                new_problem.min_score = Functions.MinBoundScore(new_problem, env);
+                tree.add(new_problem);
+            }
+        }
         else
         {
-            // Get the first lecture in env.lectures that has not been assigned
-            Lecture unassigned_lecture = null;
-            for(Lecture lec : env.lectures)
+            // determine if this is an active learning tutorial
+            boolean al = env.tutorials[selected.id].is_al;
+            // add all problem derivations that can stem from top_problem
+            int[] valid_slots = Functions.ValidTutSlots(env, selected.id, top_problem);
+            // try all possible assignments
+            for(int slot : valid_slots)
             {
-                if (top_problem.lectures[lec.id] == -1)
-                {
-                    unassigned_lecture = lec;
-                    break;
-                }
-            }
-
-            // If an unassigned lecture was found, add all problem derivations that can stem from adding it to top_problem
-            if(unassigned_lecture != null)
-            {
-                int[] valid_slots = Functions.ValidLectureSlots(env, unassigned_lecture.id, top_problem);
-                for(int slot : valid_slots)
-                {
-                    Problem new_problem = new Problem(top_problem);
-                    new_problem.AssignLecture(unassigned_lecture.id, slot);
-                    new_problem.depth++;
-                    new_problem.score = Functions.Eval(new_problem, env);
-                    tree.add(new_problem);
-                }
-            }
-
-            // Get the first tutorial in env.lectures that has not been assigned
-            Tutorial unassigned_tutorial = null;
-            for(Tutorial tut : env.tutorials)
-            {
-                if (top_problem.lectures[tut.id] == -1)
-                {
-                    unassigned_tutorial = tut;
-                    break;
-                }
-            }
-
-            // If an unassigned tutorial was found, add all problem derivations that can stem from adding it to top_problem
-            if(unassigned_tutorial != null)
-            {
-                int[] valid_slots = Functions.ValidTutSlots(env, unassigned_tutorial.id, top_problem);
-                for(int slot : valid_slots)
-                {
-                    Problem new_problem = new Problem(top_problem);
-                    new_problem.AssignTutorial(unassigned_tutorial.id, slot);
-                    new_problem.depth++;
-                    new_problem.score = Functions.Eval(new_problem, env);
-                    tree.add(new_problem);
-                }
+                //System.out.println("\nAssigning tutorial: " + selected.id + ", to slot: " + slot);
+                Problem new_problem = new Problem(top_problem);
+                new_problem.AssignTutorial(selected.id, slot, al);
+                new_problem.min_score = Functions.MinBoundScore(new_problem, env);
+                tree.add(new_problem);
             }
         }
-        return false;
     }
 }
 
@@ -130,46 +187,31 @@ class FLeafComparator implements Comparator<Problem>
     {
         // sudo code:
         // sort on the following priority
-        // 1: solvable nodes go first
-        // 2: deepest nodes go first
-        // 3: lowest score according to MinBoundScore go first
-        // 4: tie break on problem unique id 
-
-        // Sort by solvable
-        boolean p1_solvable = Functions.Solvable(p1, env);
-        boolean p2_solvable = Functions.Solvable(p2, env);
-
-        if (p1_solvable && !p2_solvable)
-        {
-            return -1;
-        }
-        if (!p1_solvable && p2_solvable)
-        {
-            return 1;
-        }
+        // 1: deepest nodes go first
+        // 2: lowest score according to MinBoundScore go first
+        // 3: tie break on problem unique id 
 
         // Sort by depth
         if (p1.depth > p2.depth)
         {
             return -1;
         }
-        if (p1.depth < p2.depth)
+        else if (p1.depth < p2.depth)
         {
             return 1;
         }
 
-        // Sort by MinBoundScore
-        // ### TODO ###: Replace minboundscore with Kevlam's MinBoundScore() for Problem.java
-        // if (p1.minboundscore < p2.minboundscore)
-        // {
-        //     return -1;
-        // }
-        // if (p1.minboundscore > p2.minboundscore)
-        // {
-        //     return 1;
-        // }
+        // sort by minboundscore
+        if(p1.min_score < p2.min_score)
+        {
+            return -1;
+        }
+        else if(p1.min_score > p2.min_score)
+        {
+            return 1;
+        }
 
-        // Sort by id
+        // Sort by hash
         if (p1.hashCode() > p2.hashCode())
         {
             return 1;

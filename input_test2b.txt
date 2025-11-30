@@ -7,10 +7,10 @@ Tutorial slots:
 MO, 10:00, 1,2,2
 
 Lectures:
-CPSC 100 LEC 09, false
+CPSC 100 LEC 9, false
 
 Tutorials:
-CPSC 100 LEC 09 TUT 01, false
+CPSC 100 LEC 9 TUT 01, false
 
 Not compatible:
 
@@ -22,4 +22,4 @@ Preferences:
 Pair:
 
 Partial assignments:
-CPSC 100 LEC 09 TUT 01, MO, 10:00
+CPSC 100 LEC 9 TUT 01, MO, 10:00

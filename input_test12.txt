@@ -1,0 +1,35 @@
+Name:
+test should have a solution
+
+Lecture slots:
+MO, 9:00, 1,1,1
+MO, 12:00, 2,1,1
+
+Tutorial slots:
+MO, 10:00, 1, 1, 1
+
+Lectures:
+AAAA 100 LEC 01, false
+AAAA 100 LEC 02, true
+AAAB 200 LEC 01, false
+
+Tutorials:
+AAAA 100 LEC 01 TUT 01, false
+
+Not compatible:
+AAAA 100 LEC 01, AAAB 200 LEC 01
+
+Unwanted:
+AAAA 100 LEC 01, MO, 9:00
+
+Preferences:
+MO, 9:00, AAAA 100 LEC 01, 10
+MO, 12:00, AAAA 100 LEC 01, 5
+MO, 9:00, AAAB 200 LEC 01, 3
+MO, 12:00, AAAB 200 LEC 01, 5
+
+Pair:
+AAAB 200 LEC 01, AAAA 100 LEC 01 TUT 01
+
+Partial assignments:
+AAAB 200 LEC 01, MO, 9:00

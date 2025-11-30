@@ -69,7 +69,16 @@ public class Main
         {
             AndSearch search = new AndSearch(env, s0);
             Problem pr = new Problem();
-            //search.RunSearch(pr);
+            pr.SetupProblem(10,10,10,10);
+            if(search.RunSearch())
+            {
+                System.out.println(String.format("\nSolution score: %d\n", env.best_score));
+                Functions.PrintProblem(env.best_sol,env);
+            }
+            else
+            {
+                System.out.println("no solution is possible");
+            }
         }
     }
 

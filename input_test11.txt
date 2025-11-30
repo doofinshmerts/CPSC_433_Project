@@ -1,5 +1,5 @@
 Name:
-ShortExample11
+evening test
 
 Lecture slots:
 MO, 9:00, 1, 2, 2

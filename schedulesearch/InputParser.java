@@ -241,12 +241,14 @@ public final class InputParser
                 ArrayList<TutorialData> temp = lec.tutorials;
                 for(TutorialData tut: temp)
                 {
+                    tut.id = t_count;
                     // convert this Tutorial data to a Tutorial
                     env.tutorials[t_count] = tut.ConvertToTutorial(t_count, s_count, l_count);            
                     // increment the tutorial count
                     t_count++;
 
                 } 
+                lec.id = l_count;
                 env.sections.get(s_count)[i] = l_count;
                 env.lectures[l_count] = lec.ConvertToLecture(l_count, s_count);
                 // increment the lecture count
@@ -330,7 +332,7 @@ public final class InputParser
         }
 
         // Parse Preferences #################################################################################################################################
-        if(!ParsePreferences(bufferedReader, env.lectures, env.tutorials, lec_tut_data, env.tutorial_slots, env.lecture_slots))
+        if(!ParsePreferences(bufferedReader, env.lectures, env.tutorials, lec_tut_data, env.lecture_slots, env.tutorial_slots))
         {
             System.out.println("Could not get preferences data from file: " + input_file);
             return false;
@@ -375,7 +377,7 @@ public final class InputParser
         // apply the partial assignments to the starting state #################################################################################################################
         
         // create an initial problem
-        s0.SetupProblem(env.num_lectures, env.num_tutorials);
+        s0.SetupProblem(env.num_lectures, env.num_tutorials, env.lec_slots_array.length, env.tut_slots_array.length);
 
         // assign the partial assignments for the lectures
         for(UnwantedPair pair : part_assign_lec)
@@ -396,7 +398,7 @@ public final class InputParser
             {
                 if(valid_slots[i] == pair.slot_id)
                 {
-                    s0.AssignLecture(pair.id, pair.slot_id);
+                    s0.AssignLecture(pair.id, pair.slot_id, env.lectures[pair.id].is_al);
                     found_slot = true;
                 }
             }
@@ -428,7 +430,7 @@ public final class InputParser
             {
                 if(valid_slots[i] == pair.slot_id)
                 {
-                    s0.AssignTutorial(pair.id, pair.slot_id);
+                    s0.AssignTutorial(pair.id, pair.slot_id, env.tutorials[pair.id].is_al);
                     found_slot = true;
                 }
             }
@@ -443,8 +445,6 @@ public final class InputParser
         // print the current form of the problem
         System.out.println("Initial problem after partial assignments");
         Functions.PrintProblem(s0, env);
-
- 
         
         // close the file reader and file buffer
         try{
@@ -469,6 +469,19 @@ public final class InputParser
     {
         // print the name of the data set
         System.out.println("dataset name: " + env.dataset_name);
+
+        System.out.println(String.format("w_minfilled: %d\nw_pref: %d\nw_pair: %d\nw_secdiff: %d\npen_lecturemin: %d\npen_tutorialmin: %d\npen_notpaired: %d\npen_section: %d\nmax_iterations: %d\ntime_limit: %d\n",
+            env.w_minfilled,
+            env.w_pref,
+            env.w_pair,
+            env.w_secdiff,
+            env.pen_lecturemin,
+            env.pen_tutorialmin,
+            env.pen_notpaired,
+            env.pen_section,
+            env.max_iterations,
+            env.time_limit
+        ));
         
         // print the lecture slots
         System.out.println("\nLecture slots ############################################################\nsize: " + env.lecture_slots.size());
@@ -625,7 +638,7 @@ public final class InputParser
             for(Map.Entry<Integer, Integer> entry : env.lectures[i].preferences.entrySet())
             {
                 System.out.print("\tvalue: " + entry.getValue() + ", ");
-                env.lecture_slots.get(entry.getKey()).PrintSlot();
+                env.lec_slots_array[entry.getKey()].PrintSlot();
             }
             System.out.println("");
         }
@@ -638,7 +651,7 @@ public final class InputParser
             for(Map.Entry<Integer, Integer> entry : env.tutorials[i].preferences.entrySet())
             {
                 System.out.print("\tvalue: " + entry.getValue() + ", ");
-                env.tutorial_slots.get(entry.getKey()).PrintSlot();
+                env.tut_slots_array[entry.getKey()].PrintSlot();
             }
             System.out.println("");
         }
@@ -672,6 +685,8 @@ public final class InputParser
         
         // print the some basic indexing checks
         System.out.println("\nChecks ###############################################################################");
+
+        System.out.println("indicies check");
         for(int i = 0; i < env.lectures.length; i++)
         {
             // this is important for checking that this system is working
@@ -682,6 +697,15 @@ public final class InputParser
         {
             System.out.println(String.format("index: %d id: %d", i, env.tutorials[i].id));
         }
+
+        System.out.println(String.format("\nPreference sum: %d", env.total_pref_sum));
+
+        System.out.println("\n equivalent lectrue slots\n");
+        for(int i = 0; i < env.tutid_to_lecid.length; i++)
+        {
+            System.out.println(String.format("tut id: %d, lec id: %d", i, env.tutid_to_lecid[i]));
+        }
+
 
         // print the constraint sorting order
         System.out.println("\nConstraint sorting order##################################################################\n");
@@ -863,16 +887,16 @@ public final class InputParser
      * @param lectures the array of lectures to use
      * @param tutorials the array of tutorials to use
      * @param lec_tut_data the map of lectures and tutorials to ids
-     * @param tutorial_slots the map of ids to tutorial slots
-     * @param lecture_slots the map of ids to lecture slots
+     * @param lec_slots the map of lecture hashes to lecture slots
+     * @param tut_slots the map of tutorial hashes to tutorial slots
      * @return true if no errors occured while parsing the data, false otherwise 
      */
     private static boolean ParsePreferences(BufferedReader bufferedReader, 
                                         Lecture[] lectures, 
                                         Tutorial[] tutorials, 
                                         HashMap<String, HashMap<Integer, LectureData>> lec_tut_data, 
-                                        HashMap<Integer, Slot> tutorial_slots,
-                                        HashMap<Integer, Slot> lecture_slots)
+                                        HashMap<Integer, Slot> lec_slots,
+                                        HashMap<Integer, Slot> tut_slots)
     {
         // read each line from the file
         String nextLine;
@@ -896,8 +920,10 @@ public final class InputParser
                 if(pref.is_lec)
                 {
                     // ensure that the slot exists
-                    if(lecture_slots.containsKey(pref.slot_id))
+                    if(lec_slots.containsKey(pref.slot_id))
                     {
+                        // get the true id
+                        pref.slot_id = lec_slots.get(pref.slot_id).id;
                         // add the slot and score to the preferences
                         lectures[pref.id].preferences.put(pref.slot_id, pref.value);
                     }
@@ -909,8 +935,10 @@ public final class InputParser
                 else
                 {
                     // ensure that the slot exists
-                    if(tutorial_slots.containsKey(pref.slot_id))
+                    if(tut_slots.containsKey(pref.slot_id))
                     {
+                        // get the true id
+                        pref.slot_id = tut_slots.get(pref.slot_id).id;
                         // add the slot to the unwanted set
                         tutorials[pref.id].preferences.put(pref.slot_id, pref.value);
                     }

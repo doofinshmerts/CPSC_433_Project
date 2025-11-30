@@ -1,5 +1,5 @@
 Name:
-ShortExample2
+incompatible lecture and universal tutorial 
 
 Lecture slots:
 MO, 9:00, 1, 2, 2

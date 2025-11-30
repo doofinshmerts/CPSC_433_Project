@@ -39,6 +39,8 @@ public class Environment
     Problem best_sol;
     // the score of the best solution found so far
     int best_score = 2000000000;
+    // indicate if a solution has been found at all
+    boolean solution_found = false;
 
     // Environment DATA #####################################################################################
     String dataset_name;
@@ -77,6 +79,12 @@ public class Environment
     // array in sorted order of the lecturs and totorials by their constraints (lookup by depth if done right)
     LecOrTutId[] constraint_ordering;
 
+    // lookup lecture ids of lectures that a scheduled at the exact same time as a given tutorial
+    int[] tutid_to_lecid;
+
+    // this is the total preference value, the preference score of a selected slot is simply removed from this sum
+    int total_pref_sum = 0;
+
     public Environment()
     {
     }
@@ -104,7 +112,7 @@ public class Environment
         pen_notpaired = _pen_notpaired;
         pen_section = _pen_section;
         max_iterations = _max_iterations;
-        time_limit = ((int)_time_limit) * 1000000000;
+        time_limit = ((long)_time_limit) * 1000000;
     }
 
     /**
@@ -112,6 +120,13 @@ public class Environment
      * This function sorts the lectures and tutorials based on priority and creates the array for sort order
      */
     public void SetupEnvironment()
+    {
+        CreateConstraintRankList();
+        SumPreferences();
+        CreateTutIDtoLecIDmap();
+    }
+
+    private void CreateConstraintRankList()
     {
         // array for storing the ids of all lectures and tutorials
         ArrayList<LecOrTutId> lectures_tutorials = new ArrayList<LecOrTutId>();
@@ -144,6 +159,48 @@ public class Environment
         for(int i = 0; i < constraint_ordering.length; i++)
         {
             constraint_ordering[i] = lectures_tutorials.get(i);
+        }
+    }
+
+    private void SumPreferences()
+    {
+       // sum the preference values
+       total_pref_sum = 0;
+       // preference values for lectures 
+       for(int i = 0; i < lectures.length; i++)
+       {
+           
+           for(Integer value : lectures[i].preferences.values())
+           {
+               total_pref_sum += value;
+           }
+       }
+       // preference values for tutorials
+       for(int i = 0; i < tutorials.length; i++)
+       {
+           for(Integer value : tutorials[i].preferences.values())
+           {
+               total_pref_sum += value;
+           }
+       }    
+    }
+
+    private void CreateTutIDtoLecIDmap()
+    {
+        // initialize the array
+        tutid_to_lecid = new int[tut_slots_array.length];
+
+        // loop through all tutorials and see if there is a corresponding lecture slot at the same time
+        for(int i = 0; i < tut_slots_array.length; i++)
+        {
+            if(lecture_slots.containsKey(tut_slots_array[i].lec_hash))
+            {
+                tutid_to_lecid[i] = lecture_slots.get(tut_slots_array[i].lec_hash).id;
+            }
+            else
+            {
+                tutid_to_lecid[i] = -1;
+            }
         }
     }
 }
