@@ -93,6 +93,28 @@ public final class Functions
         // sudo code 
         // during each expansion, only one lecture or tutorial is assigned, so depth is the number of tutorials and lectures assigned
         // maybe add a feild to Problem that records the depth in the tree and just return that
+
+        // variable for depth value
+        int depth = 0;
+        // iterate through all lectures
+        for (int i = 0; i < pr.lectures.length; i++) {
+            // if lecture is null then continue looping
+            if (pr.lectures[i] == -1) {
+                continue;
+            }
+            // otherwise this lecture has been assigned so increase depth count by 1
+            depth++;
+        }
+        // iterate through all tutorials
+        for (int i = 0; i < pr.tutorials.length; i++) {
+            // if tutorial is null then continue looping
+            if (pr.tutorials[i] == -1) {
+                continue;
+            }
+            // otherwise this tutorial has been assigned so increase depth count by 1
+            depth++;
+        }
+        // return the depth count, return depth if we want to use function instead of pr.depth
         return pr.depth;
     }
 
@@ -113,17 +135,110 @@ public final class Functions
 
     private static int EvalMinFilled(Problem pr, Environment env)
     {
-        return 0;
+        // Variables for lecture penalty and tutorial penalty
+        int lec_penalty = 0;
+        int tut_penalty = 0;
+
+        // Array to store lecture counts for each lecture slot
+        int[] lec_counts = new int[env.lec_slots_array.length];
+        // iterate through every lectures that have been assigned
+        for (int lec_id = 0; lec_id < pr.lectures.length; lec_id++) {
+            // get the slot_id that the lecture has been assigned
+            int slot_id = pr.lectures[lec_id];
+            // if >= 0 then this lecture has been assigned and increment count for the slot_id by 1
+            if (slot_id >= 0) {
+                lec_counts[slot_id]++;
+            }
+        }
+        // Repeat for tutorials
+        // Array to store tutorial counts for each tutorial slot
+        int [] tut_counts = new int[env.tut_slots_array.length];
+        // iterate through every tutorial that's been assigned
+        for (int tut_id = 0; tut_id < pr.tutorials.length; tut_id++) {
+            // get the slot_id that the tutorial has been assigned
+            int slot_id = pr.tutorials[tut_id];
+            // if >= 0 then this tutorial has been assigned and increment count for the slot_id by 1
+            if (slot_id >= 0) {
+                tut_counts[slot_id]++;
+            }
+        }
+        // get lecture penalty
+        for (int i = 0; i < env.lec_slots_array.length; i++) {
+            int count = lec_counts[i];
+            int p = Math.max(env.lec_slots_array[i].min - count, 0);
+            lec_penalty += p * env.pen_lecturemin;
+        }
+        // get tutorial penalty
+        for (int i = 0; i < env.tut_slots_array.length; i++) {
+            int count = tut_counts[i];
+            int p = Math.max(env.tut_slots_array[i].min - count, 0);
+            tut_penalty += p * env.pen_tutorialmin;
+        }
+        // return the summation of lecture penalty and tutorial penalty
+        return lec_penalty + tut_penalty;
     }
 
     private static int EvalPref(Problem pr, Environment env)
     {
-        return 0;
+        int lecPenalty = 0;
+        int tutPenalty = 0;
+
+        // Sum of lecture penalties
+        for (int i = 0; i < pr.lectures.length; i++) {
+            int slotId = pr.lectures[i];
+
+            // skip unassigned
+            if (slotId >= 0) { 
+                Lecture lec = env.lectures[i];
+                lecPenalty += lec.preferences.getOrDefault(slotId, 0);
+            }
+        }
+
+        // Sum of tutorial penalites
+        for (int i = 0; i < pr.tutorials.length; i++) {
+            int slotId = pr.tutorials[i];
+
+            //skip unassigned
+            if (slotId >= 0) {
+                Tutorial tut = env.tutorials[i];
+                tutPenalty += tut.preferences.getOrDefault(slotId, 0);
+            }
+        }
+
+        return lecPenalty + tutPenalty;
     }
+
     
     private static int EvalPair(Problem pr, Environment env)
     {
-        return 0;
+        // variables for accumulating
+        int penalty = 0;
+        int a;
+        int b;
+        // go through each pair
+        for (Pair pair : env.pairs) {
+            // if first item is an assigned lecture, then set a accordingly
+            if (pair.is_lec1) {
+                a = pr.lectures[pair.id1];
+            } // otherwise its an assigned tutorial and we set it accordingly as well
+            else {
+                a = pr.tutorials[pair.id1];
+            } // repeat same process for 2nd item
+            if (pair.is_lec2) {
+                b = pr.lectures[pair.id2];
+            }
+            else {
+                b = pr.tutorials[pair.id2];
+            }
+            // check to see if a or b is actually assigned by checking if its value is >= 0, then also check if a is not equal to b
+            // assign(a) != assign(b) -> apply penalty
+            if (a >=0 && b >= 0 && a != b) {
+                penalty += env.pen_notpaired;
+            }
+            // if both in same slot or one unassigned then no penalty is added to the accumulator, assign(a) == assign(b) -> penalty = 0
+        }
+
+        return penalty;
     }
 
     private static int EvalSecDiff(Problem pr, Environment env)
