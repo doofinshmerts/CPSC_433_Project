@@ -3,7 +3,20 @@ test should have a solution
 
 Lecture slots:
 MO, 9:00, 1,1,1
-MO, 12:00, 2,1,1
+MO, 10:00, 3,1,1
+MO, 11:00, 3,1,1
+MO, 12:00, 3,1,1
+MO, 13:00, 3,1,1
+MO, 14:00, 3,1,1
+MO, 8:00, 3,1,1
+MO, 15:00, 3,1,1
+MO, 16:00, 3,1,1
+MO, 17:00, 3,1,1
+MO, 18:00, 3,1,1
+MO, 19:00, 3,1,1
+MO, 20:00, 3,1,1
+MO, 21:00, 3,1,1
+
 
 Tutorial slots:
 MO, 10:00, 1, 1, 1
@@ -11,7 +24,16 @@ MO, 10:00, 1, 1, 1
 Lectures:
 AAAA 100 LEC 01, false
 AAAA 100 LEC 02, true
+AAAA 100 LEC 03, false
+AAAA 100 LEC 04, false
+AAAA 300 LEC 91, false
+AAAA 300 LEC 05, true
+AAAA 300 LEC 06, true
+AAAA 500 LEC 07, true
+AAAA 520 LEC 92, true
+AAAA 530 LEC 08, true
 AAAB 200 LEC 01, false
+
 
 Tutorials:
 AAAA 100 LEC 01 TUT 01, false
