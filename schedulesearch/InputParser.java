@@ -328,7 +328,99 @@ public final class InputParser
         PrintParseResults(env, part_assign_lec, part_assign_tut);
 
         // Add the special constraints #########################################################################################################################################
-        // remove any lecture slots that overlap tuesdays at 11:00 to 12:30
+        // remove any lecture slots that overlap tuesdays at 11:00 to 12:30 (Handled in Functions.ValidLectureSlots)
+        
+        // Special Constraint: CPSC 851 / CPSC 913
+        // If CPSC 351 exists -> Schedule CPSC 851 TUT at TU 18:00
+        if(lec_tut_data.containsKey("CPSC 351"))
+        {
+            // Find CPSC 851 TUT
+            int targetTutId = -1;
+            for(Tutorial t : env.tutorials) {
+                if(t.course_descriptor.equals("CPSC 851") && t.lec_num == 1 && t.tut_num == 1) {
+                    targetTutId = t.id;
+                    break;
+                }
+            }
+            
+            // Find Slot TU 18:00 (Tutorial Slot)
+            int targetSlotId = -1;
+            for(Slot s : env.tut_slots_array) {
+                if(s.day == 1 && s.hour == 18 && s.minute == 0) {
+                    targetSlotId = s.id;
+                    break;
+                }
+            }
+
+            if(targetTutId != -1 && targetSlotId != -1) {
+                // Add partial assignment
+                UnwantedPair specialAssign = new UnwantedPair();
+                specialAssign.is_lec = false;
+                specialAssign.id = targetTutId;
+                specialAssign.slot_id = targetSlotId;
+                part_assign_tut.add(specialAssign);
+                
+                // Add incompatibilities with CPSC 351
+                HashMap<Integer, LectureData> cpsc351 = lec_tut_data.get("CPSC 351");
+                for(LectureData ld : cpsc351.values()) {
+                    // Incompatible with Lecture
+                    env.lectures[ld.id].not_compatible_tut.add(targetTutId);
+                    env.tutorials[targetTutId].not_compatible_lec.add(ld.id);
+                    
+                    // Incompatible with Tutorials
+                    for(TutorialData td : ld.tutorials) {
+                        env.tutorials[td.id].not_compatible_tut.add(targetTutId);
+                        env.tutorials[targetTutId].not_compatible_tut.add(td.id);
+                    }
+                }
+            }
+        }
+
+        // If CPSC 413 exists -> Schedule CPSC 913 TUT at TU 18:00
+        if(lec_tut_data.containsKey("CPSC 413"))
+        {
+            // Find CPSC 913 TUT
+            int targetTutId = -1;
+            for(Tutorial t : env.tutorials) {
+                if(t.course_descriptor.equals("CPSC 913") && t.lec_num == 1 && t.tut_num == 1) {
+                    targetTutId = t.id;
+                    break;
+                }
+            }
+            
+            // Find Slot TU 18:00 (Tutorial Slot)
+            int targetSlotId = -1;
+            for(Slot s : env.tut_slots_array) {
+                if(s.day == 1 && s.hour == 18 && s.minute == 0) {
+                    targetSlotId = s.id;
+                    break;
+                }
+            }
+
+            if(targetTutId != -1 && targetSlotId != -1) {
+                // Add partial assignment
+                UnwantedPair specialAssign = new UnwantedPair();
+                specialAssign.is_lec = false;
+                specialAssign.id = targetTutId;
+                specialAssign.slot_id = targetSlotId;
+                part_assign_tut.add(specialAssign);
+                
+                // Add incompatibilities with CPSC 413
+                HashMap<Integer, LectureData> cpsc413 = lec_tut_data.get("CPSC 413");
+                for(LectureData ld : cpsc413.values()) {
+                    // Incompatible with Lecture
+                    env.lectures[ld.id].not_compatible_tut.add(targetTutId);
+                    env.tutorials[targetTutId].not_compatible_lec.add(ld.id);
+                    
+                    // Incompatible with Tutorials
+                    for(TutorialData td : ld.tutorials) {
+                        env.tutorials[td.id].not_compatible_tut.add(targetTutId);
+                        env.tutorials[targetTutId].not_compatible_tut.add(td.id);
+                    }
+                }
+            }
+        }
+        
         // if exists add partial constraint CPSC 851 to TU 18:00
         // if exists add partial constraint CPSC 913 to TU 18:00
         // if exists add unwanted for any CPSC 351 to time overlapping 18:00 to 19:00
@@ -1933,7 +2025,9 @@ public final class InputParser
             tut.lec_num = buffer[0];
 
             // is this an evening lecture
-            if(tut.lec_num == 9)
+            // Problem description: "All lectures with prefix 'LEC 9' are evening lectures"
+            // e.g. LEC 91, LEC 92.
+            if(tut.lec_num >= 90)
             {
                 tut.is_evng = true;
             }
@@ -2119,80 +2213,88 @@ public final class InputParser
     private static boolean TryGetLectureFromLine(String line, LectureData lec)
     {
         // split the string by ',' deliminator
-        String[] elements;
+        String[] elements = line.split(",");
+        
+        // there must be 2 elements (name, AL)
+        if(elements.length != 2)
+        {
+            return false;
+        }
 
         // record the full name of the lecture
-        lec.name = line.split(",")[0];;
+        lec.name = elements[0];
 
-        // split the line on the key word LEC
-        if(line.contains("LEC"))
+        // check to see if the name contains "LEC"
+        if(elements[0].contains("LEC"))
         {
-            elements = line.split("LEC");
+            // split on "LEC"
+            String[] lec_info = elements[0].split("LEC");
+            // ensure that there is course descriptor and lecture number
+            if(lec_info.length != 2)
+            {
+                return false;
+            }
+
+            // get the course descriptor and lecture number
+            lec_info[0] = lec_info[0].strip();
+            lec_info[1] = lec_info[1].strip();
+
+            // record the course descriptor
+            lec.course_descriptor = lec_info[0];
+            
+            // convert the strings to a number
+            int[] buffer = new int[1];
+            if(!GetSafeIntFromString(lec_info[1], buffer))
+            {
+                return false;
+            }
+            
+            // record the lecture number
+            lec.lec_num = buffer[0];
+
+            // is this an evening lecture
+            if(lec.lec_num >= 90)
+            {
+                lec.is_evng = true;
+            }
+            else
+            {
+                lec.is_evng = false;
+            }
+
+            // is this a 500 level course
+            // parse the course descriptor for the number
+            String[] course_info = lec.course_descriptor.split(" ");
+            if(course_info.length == 2)
+            {
+                if(GetSafeIntFromString(course_info[1], buffer))
+                {
+                    if(buffer[0] >= 500 && buffer[0] < 600)
+                    {
+                        lec.is_5xx = true;
+                    }
+                    else
+                    {
+                        lec.is_5xx = false;
+                    }
+                }
+                else
+                {
+                    lec.is_5xx = false;
+                }
+            }
+            else
+            {
+                lec.is_5xx = false;
+            }
+
         }
         else
         {
             return false;
         }
 
-
-        // there must be 2 elements (course_descriptor, lecture number + AL)
-        if(elements.length != 2)
-        {
-            return false;
-        }
-
-        elements[0] = elements[0].strip();
-        elements[1] = elements[1].strip();
-
-        // record the course descriptor
-        lec.course_descriptor = elements[0];
-
-        // determine if this is a 500 level course
-        String[] desc = elements[0].split(" ");
-        if(desc.length != 2)
-        {
-            return false;
-        }
-        desc[1] = desc[1].strip();
-
-        if(desc[1].charAt(0) == '5')
-        {
-            lec.is_5xx = true;
-        }
-        else
-        {
-            lec.is_5xx = false;
-        }
-
-        // get the course number and AL
-        elements = elements[1].split(",");
-        
-        // there should be 2 elements
-        if(elements.length != 2)
-        {
-            return false;
-        }
-
-        // convert the strings to a number
-        int[] buffer = new int[1];
-        if(!GetSafeIntFromString(elements[0], buffer))
-        {
-            return false;
-        }
-        
-        // record the lecture number
-        lec.lec_num = buffer[0];
-
-        // is this an evening lecture
-        if(lec.lec_num == 9)
-        {
-            lec.is_evng = true;
-        }
-        else
-        {
-            lec.is_evng = false;
-        }
-
+        // check for active learning
         if(elements[1].contains("true"))
         {
             lec.is_al = true;

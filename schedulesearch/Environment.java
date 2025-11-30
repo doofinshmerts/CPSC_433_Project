@@ -100,6 +100,6 @@ public class Environment
         pen_notpaired = _pen_notpaired;
         pen_section = _pen_section;
         max_iterations = _max_iterations;
-        time_limit = ((int)_time_limit) * 1000000000;
+        time_limit = ((long)_time_limit) * 1000000000L;
     }
 }
