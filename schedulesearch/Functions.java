@@ -247,7 +247,7 @@ public final class Functions
         // this hashset will store the indices of all the slots that are not valid
         HashSet<Integer> slot_mask = new HashSet<Integer>();
 
-        // Find over capacity slots ####################################################################################################################
+        // Find over capacity slots
         // initialize an array for holding the slots fill values
         int[] slot_fill = new int[env.lec_slots_array.length];
         // initialize an array for holding the al slots fill values
@@ -305,7 +305,7 @@ public final class Functions
             }
         }
     
-        // find slots of the corresponding tutorials ##########################################################################################################
+        // find slots of the corresponding tutorials
         for(int i = 0; i < lecture.tutorials.length; i++)
         {
             // the id of the tutorial
@@ -320,7 +320,7 @@ public final class Functions
             }            
         }
 
-        // find not compatible slot assignments ######################################################################################################################
+        // find not compatible slot assignments
         // loop through the not compatible lectures/tutorials and get their slot assignments
         for(Integer lec: lecture.not_compatible_lec)
         {
@@ -347,13 +347,13 @@ public final class Functions
             }            
         }
 
-        // find the Unwanted slots #################################################################################################################################
+        // find the Unwanted slots
         for(Integer slot_id: lecture.unwanted)
         {
             slot_mask.add(slot_id);
         }
         
-        // find other 5xx level lectures if this is a 5xx level lecture ############################################################################################################################
+        // find other 5xx level lectures if this is a 5xx level lecture
         if(lecture.is_5xx)
         {
             for(int i = 0; i < env.lectures_5xx.length; i++)
@@ -439,7 +439,7 @@ public final class Functions
         // this hashset will store the indices of all the slots that are not valid
         HashSet<Integer> slot_mask = new HashSet<Integer>();
 
-        // Find over capacity slots ####################################################################################################################
+        // Find over capacity slots
         // initialize an array for holding the slots fill values
         int[] slot_fill = new int[env.tut_slots_array.length];
         // initialize an array for holding the al slots fill values
@@ -488,7 +488,7 @@ public final class Functions
             }
         }
     
-        // find slots of the corresponding lecture ##########################################################################################################
+        // find slots of the corresponding lecture
         // get the slot of the parent lecture
         int lec_slot = pr.lectures[tutorial.lec_id];
         if(lec_slot != -1)
@@ -527,7 +527,7 @@ public final class Functions
             }            
         }
 
-        // find the Unwanted slots #################################################################################################################################
+        // find the Unwanted slots
         for(Integer slot_id: tutorial.unwanted)
         {
             slot_mask.add(slot_id);

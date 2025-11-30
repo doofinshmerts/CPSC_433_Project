@@ -8,7 +8,7 @@ import java.util.HashMap;
 public class Environment
 {
 
-    // INPUT SCALARS ################################################################################
+    // INPUT SCALARS
     // the weights used in the score calculations
     int w_minfilled;
     int w_pref;
@@ -26,7 +26,7 @@ public class Environment
     // time limit in seconds
     long time_limit; 
 
-    // RECORD ############################################################################################
+    // RECORD
     // the current execution time since the start of the search
     long current_time = 0;
     // the start time (needed for measuring time since timer does not start at zero)
@@ -38,7 +38,7 @@ public class Environment
     // the score of the best solution found so far
     int best_score = 2000000000;
 
-    // Environment DATA #####################################################################################
+    // Environment DATA
     String dataset_name;
     
     // the number of lectures that need assigning
