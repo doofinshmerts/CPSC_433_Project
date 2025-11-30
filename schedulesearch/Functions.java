@@ -211,7 +211,34 @@ public final class Functions
     
     private static int EvalPair(Problem pr, Environment env)
     {
-        return 0;
+        // variables for accumulating
+        int penalty = 0;
+        int a;
+        int b;
+        // go through each pair
+        for (Pair pair : env.pairs) {
+            // if first item is an assigned lecture, then set a accordingly
+            if (pair.is_lec1) {
+                a = pr.lectures[pair.id1];
+            } // otherwise its an assigned tutorial and we set it accordingly as well
+            else {
+                a = pr.tutorials[pair.id1];
+            } // repeat same process for 2nd item
+            if (pair.is_lec2) {
+                b = pr.lectures[pair.id2];
+            }
+            else {
+                b = pr.tutorials[pair.id2];
+            }
+            // check to see if a or b is actually assigned by checking if its value is >= 0, then also check if a is not equal to b
+            // assign(a) != assign(b) -> apply penalty
+            if (a >=0 && b >= 0 && a != b) {
+                penalty += env.pen_notpaired;
+            }
+            // if both in same slot or one unassigned then no penalty is added to the accumulator, assign(a) == assign(b) -> penalty = 0
+        }
+
+        return penalty;
     }
 
     private static int EvalSecDiff(Problem pr, Environment env)
