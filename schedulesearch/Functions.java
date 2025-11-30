@@ -33,11 +33,6 @@ public final class Functions
      */ 
     public static boolean Solvable(Problem pr, Environment env)
     {
-        // sudo code
-        // if all lectures and tutorials have a non null assignment in pr, then the problem is solvable so return true
-        // if there are lectures or tutorials with null assignments in pr, and there are no valid slots to assign the null
-        // lectures or tutorials then the problem is solvable
-
         // iterate through all lecs in pr
         for (int i = 0; i < pr.lectures.length; i++) {
             // if a lec assignment is null, check if it has any valid slot assignments
@@ -75,10 +70,6 @@ public final class Functions
      */ 
     public static boolean FBound(Problem pr, Environment env)
     {
-        // sudo code
-        // evaluate the minboundscore of pr, if this score is greater than the best score found so far return true
-        // return false otherwise
-
         int mbs = MinBoundScore(pr, env);
         if (mbs > env.best_score) return true;
         return false;
@@ -91,9 +82,6 @@ public final class Functions
      */ 
     public static int Depth(Problem pr)
     {
-        // sudo code 
-        // during each expansion, only one lecture or tutorial is assigned, so depth is the number of tutorials and lectures assigned
-        // maybe add a feild to Problem that records the depth in the tree and just return that
         return pr.depth;
     }
 
@@ -254,17 +242,6 @@ public final class Functions
      */ 
     public static int[] ValidLectureSlots(Environment env, int lec_id, Problem pr)
     {
-        // sudo code 
-        // start with all lecture slots and use the following filters
-        // if slot s is full then remove s from consideration
-        // if lec_id is an active learning lecture and slot s has no free active learning slots then remove s from consideration
-        // if any of the tutorials for lecture l have been assigned slot s then remove s from consideration
-        // if any of the lectures or tutorials that are not compatible with l have been assigned slot s then remove s from consideration
-        // if unwanted(l,s) is true then remove s from consideration
-        // if lecture l is an evening lecture and s is not an evening time slot then remove s from consideration
-        // if lecture l is a 5XX level course and there is another 5XX level lecture assigned to slot s then remove s from consideration
-        // return the id's of all remaining slots
-
         // get the information about the lecture
         Lecture lecture = env.lectures[lec_id];
         // this hashset will store the indices of all the slots that are not valid
@@ -458,16 +435,6 @@ public final class Functions
      */
     public static int[] ValidTutSlots(Environment env, int tut_id, Problem pr)
     {
-        // sudo code 
-        // start with all tutorial slots and use the following filters
-        // if slot s is full then remove s from consideration
-        // if tut_id is an active learning tutorial and slot s has no free active learning slots then remove s from consideration
-        // if the lecture associated with tutorial t has been assigned slot s then remove slot s from consideration
-        // if any of the lectures or tutorials that are not compatible with t have been assigned slot s then remove s from consideration
-        // if unwanted(t,s) is true then remove s from consideration
-        // return the id's of all remaining slots
-        // get the information about the lecture
-
         Tutorial tutorial = env.tutorials[tut_id];
         // this hashset will store the indices of all the slots that are not valid
         HashSet<Integer> slot_mask = new HashSet<Integer>();

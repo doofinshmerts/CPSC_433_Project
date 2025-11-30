@@ -27,13 +27,6 @@ public final class InputParser
      */
     public static boolean ParseInputFile(String input_file, Environment env, Problem s0)
     {
-        // sudo code:
-        // parse the file for the information in environment, return false on any parsing error
-        // parse the file for the partial assignments, return false on any parsing error
-        // try adding the partial assignments to s0 
-        // if any partial assignment leads to an invalid assignment in s0 return false
-        // if all partial assignments are valid then return true
-
         // create the file object
         File file = new File(input_file);
 

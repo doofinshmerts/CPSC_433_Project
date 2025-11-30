@@ -206,26 +206,13 @@ class FLeafComparator implements Comparator<Problem>
      */ 
     public int compare(Problem p1, Problem p2)
     {
-        // sudo code:
         // sort on the following priority
-        // 1: solvable nodes go first (Wait, unsolved/invalid nodes are usually pruned?)
-        // Actually, 'Solvable' check here might be expensive if called on every compare.
-        // But let's keep the logic if that's the heuristic.
-        // Note: If we Prune !Solvable nodes in expansion, we don't need to check here?
-        // Yes, if tree only contains Solvable nodes, this check is redundant.
-        // But maybe standard implementation keeps them? No, efficient one prunes.
+        // 1: solvable nodes go first
+        // 2: deepest nodes go first
+        // 3: lowest score according to MinBoundScore go first
+        // 4: tie break on problem unique id 
         
-        // Let's assume tree contains only Solvable nodes due to RunSearch logic.
-        // But for safety/legacy from other branches, we can keep or simplify.
-        
-        // However, Functions.Solvable is O(N_unassigned * M_slots). 
-        // Calling it in Comparator (O(log N)) is VERY expensive.
-        // Ideally, we shouldn't call Solvable in comparator.
-        // But I'll leave it for now to match "robustness" of existing intent, 
-        // unless it kills performance. 
-        // Actually, Solvable check in RunSearch loop is better.
-        
-        // Sort by depth (Depper = more assigned = better)
+        // Sort by solvable
         if (p1.depth > p2.depth)
         {
             return -1;
