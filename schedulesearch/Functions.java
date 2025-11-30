@@ -72,7 +72,7 @@ public final class Functions
         // variable for depth value
         int depth = 0;
         // iterate through all lectures
-        for (int i = 0; i < length(pr.lectures); i++) {
+        for (int i = 0; i < pr.lectures.length; i++) {
             // if lecture is null then continue looping
             if (pr.lectures[i] == -1) {
                 continue;
@@ -81,7 +81,7 @@ public final class Functions
             depth++;
         }
         // iterate through all tutorials
-        for (int i = 0; i < length(pr.tutorials); i++) {
+        for (int i = 0; i < pr.tutorials.length; i++) {
             // if tutorial is null then continue looping
             if (pr.tutorials[i] == -1) {
                 continue;
@@ -110,7 +110,47 @@ public final class Functions
 
     private static int EvalMinFilled(Problem pr, Environment env)
     {
-        return 0;
+        // Variables for lecture penalty and tutorial penalty
+        int lec_penalty = 0;
+        int tut_penalty = 0;
+
+        // Array to store lecture counts for each lecture slot
+        int[] lec_counts = new int[env.lec_slots_array.length];
+        // iterate through every lectures that have been assigned
+        for (int lec_id = 0; lec_id < pr.lectures.length; lec_id++) {
+            // get the slot_id that the lecture has been assigned
+            int slot_id = pr.lectures[lec_id];
+            // if >= 0 then this lecture has been assigned and increment count for the slot_id by 1
+            if (slot_id >= 0) {
+                lec_counts[slot_id]++;
+            }
+        }
+        // Repeat for tutorials
+        // Array to store tutorial counts for each tutorial slot
+        int [] tut_counts = new int[env.tut_slots_array.length];
+        // iterate through every tutorial that's been assigned
+        for (int tut_id = 0; tut_id < pr.tutorials.length; tut_id++) {
+            // get the slot_id that the tutorial has been assigned
+            int slot_id = pr.tutorials[tut_id];
+            // if >= 0 then this tutorial has been assigned and increment count for the slot_id by 1
+            if (slot_id >= 0) {
+                tut_counts[slot_id]++;
+            }
+        }
+        // get lecture penalty
+        for (int i = 0; i < env.lec_slots_array.length; i++) {
+            int count = lec_counts[i];
+            int p = Math.max(env.lec_slots_array[i].min - count, 0);
+            lec_penalty += p * env.pen_lecturemin;
+        }
+        // get tutorial penalty
+        for (int i = 0; i < env.tut_slots_array.length; i++) {
+            int count = tut_counts[i];
+            int p = Math.max(env.tut_slots_array[i].min - count, 0);
+            tut_penalty += p * env.pen_tutorialmin;
+        }
+        // return the summation of lecture penalty and tutorial penalty
+        return lec_penalty + tut_penalty;
     }
 
     private static int EvalPref(Problem pr, Environment env)
