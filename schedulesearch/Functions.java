@@ -27,15 +27,42 @@ public final class Functions
     /**
      * Solvable determines if problem pr is solvable
      * @param pr the problem to check
+     * @param env the environment
      * @return true if pr is solvable, false otherwise
      */ 
-    public static boolean Solvable(Problem pr)
+    public static boolean Solvable(Problem pr, Environment env)
     {
         // sudo code
         // if all lectures and tutorials have a non null assignment in pr, then the problem is solvable so return true
         // if there are lectures or tutorials with null assignments in pr, and there are no valid slots to assign the null
         // lectures or tutorials then the problem is solvable
-        return false;
+
+        // iterate through all lecs in pr
+        for (int i = 0; i < pr.lectures.length; i++) {
+            // if a lec assignment is null, check if it has any valid slot assignments
+            if (pr.lectures[i] == -1) {
+                int[] validLecs = ValidLectureSlots(env, i, pr);
+                // if there are valid slot assignments, solution can still be expanded
+                if (validLecs.length > 0) {
+                    return false;
+                }
+            }
+        }
+
+        // iterate through all tutorials in pr
+        for (int i = 0; i < pr.tutorials.length; i++) {
+            // if a tut assignment is null, check if it has any valid assignments
+            if (pr.tutorials[i] == -1) {
+                int[] validTuts = ValidTutSlots(env, i, pr);
+                // if there are valid assignments, solution can be expanded still
+                if (validTuts.length > 0) {
+                    return false;
+                }
+            }
+        }
+
+        //solution is not expandable
+        return true;
     }
 
     /**
@@ -51,10 +78,8 @@ public final class Functions
         // evaluate the minboundscore of pr, if this score is greater than the best score found so far return true
         // return false otherwise
 
-        // get min bound score of pr and check it with the best score so far stored in env, if greater than return true
-        if (MinBoundScore(pr, env) > env.best_score)
-            return true;
-
+        int mbs = MinBoundScore(pr, env);
+        if (mbs > env.best_score) return true;
         return false;
     }
 
@@ -89,8 +114,8 @@ public final class Functions
             // otherwise this tutorial has been assigned so increase depth count by 1
             depth++;
         }
-        // return the depth count
-        return depth;
+        // return the depth count, return depth if we want to use function instead of pr.depth
+        return pr.depth;
     }
 
     /**
@@ -436,15 +461,19 @@ public final class Functions
         }
     
         // find slots of the corresponding lecture ##########################################################################################################
-        // get the slot of the parent lecture
-        int lec_slot = pr.lectures[tutorial.lec_id];
-        if(lec_slot != -1)
+
+        for(int i = 0; i < tutorial.parent_lectures.length; i++)
         {
-            // get the overlapping tutorial slots for this lecture slot
-            for(int i = 0; i < env.lecslot_tutslot[lec_slot].length; i++)
+            // the id of the lecture slot
+            int id = pr.lectures[tutorial.parent_lectures[i]];
+            if(id != -1)
             {
-                slot_mask.add(env.lecslot_tutslot[lec_slot][i]);
-            }
+                // add the ids of the tutorial slots that overlap this lecture slot
+                for(int j = 0; j < env.lecslot_tutslot[id].length; j++)
+                    {
+                        slot_mask.add(env.lecslot_tutslot[id][j]);
+                    }
+            }            
         }
 
         // find not compatible slot assignments
@@ -548,11 +577,13 @@ public final class Functions
 
         for(int i = 0; i < output.size(); i++)
         {
-            System.out.println(output.get(i).lecture + " " + output.get(i).slot);
+            String temp = String.format("%-23s: %s", output.get(i).lecture,output.get(i).slot);
+            System.out.println(temp);
 
             for(int j =0; j < output.get(i).tutorials.size(); j++)
             {
-                System.out.println(output.get(i).tutorials.get(j).tutorial + " " + output.get(i).tutorials.get(j).slot);
+                temp = String.format("%-23s: %s", output.get(i).tutorials.get(j).tutorial,output.get(i).tutorials.get(j).slot);
+                System.out.println(temp);
             }
         }
     } 

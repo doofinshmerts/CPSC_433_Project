@@ -196,8 +196,8 @@ public final class InputParser
         }
 
         // count the total number of tutorials
-        count = 0;
-        int s_count = 0;
+        count = 0; // tutorial count
+        int s_count = 0; // section number
         for(HashMap<Integer, LectureData> elm : lec_tut_data.values())
         {
             for(LectureData elem : elm.values())
@@ -206,8 +206,8 @@ public final class InputParser
                 count += temp.size();   
             }
 
-            // allocate the arrays for the section map
-            Integer[] sec = new Integer[elm.size()];
+            // allocate the arrays for the section map to the number of lectures in each section
+            int[] sec = new int[elm.size()];
             env.sections.put(s_count, sec);
 
             s_count++;
@@ -216,16 +216,17 @@ public final class InputParser
 
         // Convert TutorialData and lectureData to Tutorials and Lectures #########################################################################################
         
-        int t_count = 0;
-        int l_count = 0;
-        s_count = 0;
+        int t_count = 0; // tutorial id
+        int l_count = 0; // lecture id
+        s_count = 0; // section id
         
         env.tutorials = new Tutorial[env.num_tutorials];
         env.lectures = new Lecture[env.num_lectures];
 
         // use for recording the 5xx level lectures
         ArrayList<Integer> lec_5xx = new ArrayList<Integer>();
-
+        
+        // create the tutorials and lectures
         for(HashMap<Integer, LectureData> elm : lec_tut_data.values())
         {
             int i = 0; // the counter for the internal lectures within a section
@@ -241,14 +242,13 @@ public final class InputParser
                 for(TutorialData tut: temp)
                 {
                     // convert this Tutorial data to a Tutorial
-                    env.tutorials[t_count] = tut.ConvertToTutorial(t_count);            
+                    env.tutorials[t_count] = tut.ConvertToTutorial(t_count, s_count, l_count);            
                     // increment the tutorial count
                     t_count++;
 
                 } 
-                // convert this lecture data to a lecture
-                env.lectures[l_count] = lec.ConvertToLecture(l_count, s_count);
                 env.sections.get(s_count)[i] = l_count;
+                env.lectures[l_count] = lec.ConvertToLecture(l_count, s_count);
                 // increment the lecture count
                 l_count++;
                 i++;
@@ -258,6 +258,55 @@ public final class InputParser
             s_count++;
         }
 
+        // this is for creating the lists of tutorials assigned to lectures
+        ArrayList<ArrayList<Integer>> tut_map = new ArrayList<ArrayList<Integer>>();
+
+        // initialize the array
+        for(int i = 0; i < env.num_lectures; i++)
+        {
+            // initialize the array at this index
+            ArrayList<Integer> new_array = new ArrayList<Integer>();
+            tut_map.add(new_array);
+        }
+
+        // assign the tutorial parent lectures
+        for(int i = 0; i < env.tutorials.length; i++)
+        {
+            
+            // if the section is not -1 then add all lectures in the section as parent lectures
+            if(env.tutorials[i].section != -1)
+            {
+                // this tutorial bellongs to a section so add all tutorials in its section
+                int[] temp = env.sections.get(env.tutorials[i].section);
+                env.tutorials[i].parent_lectures = temp;
+
+                // add this tutorial to the array for its parent lecture
+                for(int j = 0; j < temp.length; j++)
+                {
+                    // get the lecture at index j and add the tutorial id 'i' to its list of children
+                    tut_map.get(temp[j]).add(i);
+                }
+            }
+            else
+            {
+                // if not then add this tutorial to the list of its only parent
+                tut_map.get(env.tutorials[i].parent_lectures[0]).add(i);
+            }
+        }
+
+        // add the tutorials to the lectures
+        for(int i = 0; i < env.num_lectures; i++)
+        {
+            // the array for holding the list of tutorials that bellong to this lecture
+            int[] temp = new int[tut_map.get(i).size()];
+            for(int j = 0; j < temp.length; j++)
+            {
+                temp[j] = tut_map.get(i).get(j);
+            }
+            // assign this map to the lecture 
+            env.lectures[i].tutorials = temp;
+        }
+
         // put the array of 5xx level lectures in the environment
         int[] lectures_5xx = new int[lec_5xx.size()];
         for(int i = 0; i < lectures_5xx.length; i++)
@@ -265,19 +314,6 @@ public final class InputParser
             lectures_5xx[i] = lec_5xx.get(i);
         }
         env.lectures_5xx = lectures_5xx;
-        
-        // set parent lecture number in each tutorial for backwards lookup
-        for(int i = 0; i < env.num_lectures; i++)
-        {
-            // get the ids of the tutorials associated with this lecture
-            int[] tuts = env.lectures[i].tutorials;
-            int id = env.lectures[i].id;
-
-            for(int j = 0; j < tuts.length; j++)
-            {
-                env.tutorials[tuts[j]].lec_id = id;    
-            }
-        }
 
         // Parse Not Compatible ##################################################################################################################
         if(!ParseNotCompatible(bufferedReader, env.lectures, env.tutorials, lec_tut_data))
@@ -353,12 +389,20 @@ public final class InputParser
             Functions.PrintLectureSlots(valid_slots, env); 
 
             // ensure that the slot exists in the array of valid slots
+            boolean found_slot = false;
             for(int i = 0; i < valid_slots.length; i++)
             {
                 if(valid_slots[i] == pair.slot_id)
                 {
                     s0.AssignLecture(pair.id, pair.slot_id);
+                    found_slot = true;
                 }
+            }
+
+            if(found_slot == false)
+            {
+                System.out.println("Invalid partial assignment: assigning lecture: " + pair.id + ", to slot: " + pair.slot_id);
+                return false; 
             }
         }
 
@@ -368,6 +412,7 @@ public final class InputParser
             System.out.println("\nAssigning tutorial: " + pair.id + ", to slot: " + pair.slot_id);
             // get the valid slots for this lecture assignments
             int[] valid_slots = Functions.ValidTutSlots(env, pair.id, s0);
+            // check to see if any slots were returned
             if(valid_slots == null)
             {
                 System.out.println("Invalid partial assignment: assigning tutorial: " + pair.id + ", to slot: " + pair.slot_id);
@@ -376,12 +421,20 @@ public final class InputParser
             Functions.PrintTutorialSlots(valid_slots, env); 
 
             // ensure that the slot exists in the array of valid slots
+            boolean found_slot = false;
             for(int i = 0; i < valid_slots.length; i++)
             {
                 if(valid_slots[i] == pair.slot_id)
                 {
                     s0.AssignTutorial(pair.id, pair.slot_id);
+                    found_slot = true;
                 }
+            }
+
+            if(found_slot == false)
+            {
+                System.out.println("Invalid partial assignment: assigning tutorial: " + pair.id + ", to slot: " + pair.slot_id);
+                return false;     
             }
         }
 
@@ -468,7 +521,7 @@ public final class InputParser
         // print the sections map
         System.out.println("\nSections ###################################################################\n");
         int j = 0;
-        for(Integer[] elm: env.sections.values())
+        for(int[] elm: env.sections.values())
         {
             System.out.println("Section: " + j);
             j++;
@@ -1933,7 +1986,7 @@ public final class InputParser
             tut.lec_num = buffer[0];
 
             // is this an evening lecture
-            if(tut.lec_num == 9)
+            if(lec_info[1].charAt(0) == '9')
             {
                 tut.is_evng = true;
             }
@@ -1945,8 +1998,11 @@ public final class InputParser
         }
         else
         {
-            // if it does not contain "LEC" then lecture number is 1
+            // if it does not contain "LEC" then this tutorial bellongs to all lectures in the section
+            // so set the lecture number to 1 (not important) and use section to true
             tut.lec_num = 1;
+            tut.use_section = true;
+            tut.is_evng = true;
             tut.course_descriptor = elements[0];
         }
 
@@ -1966,7 +2022,7 @@ public final class InputParser
             return false;
         }
         
-        // record the lecture number
+        // record the tutorial number
         tut.tut_num = buffer[0];
 
         if(elements[1].contains("true"))
@@ -2166,6 +2222,8 @@ public final class InputParser
 
         // get the course number and AL
         elements = elements[1].split(",");
+        elements[0] = elements[0].stripLeading();
+        elements[1] = elements[1].stripLeading();
         
         // there should be 2 elements
         if(elements.length != 2)
@@ -2184,7 +2242,7 @@ public final class InputParser
         lec.lec_num = buffer[0];
 
         // is this an evening lecture
-        if(lec.lec_num == 9)
+        if(elements[0].charAt(0) == '9')
         {
             lec.is_evng = true;
         }
@@ -2461,7 +2519,7 @@ public final class InputParser
         {
             return false;
         }
-        return_slot.name = line;
+        return_slot.name = elements[0] + "," + elements[1].stripTrailing();
 
         // get the day
         switch(elements[0])
@@ -2616,7 +2674,7 @@ class LectureData
 
     /**
      * Convert the Lecture Data to a Lecture
-     * NOTE: tutorials must be assigned unique ids first
+     * NOTE: tutorail array must be assigned seperately
      * @param id the unique id to give this lecture
      * @param section the section that this lecture bellongs to 
      * @return a lecture data structure
@@ -2631,14 +2689,6 @@ class LectureData
         temp.is_evng = is_evng;
         temp.section = section;
         temp.name = name;
-
-        temp.tutorials = new int[tutorials.size()];
-        
-        for(int i = 0; i < tutorials.size(); i++)
-        {
-            temp.tutorials[i] = tutorials.get(i).id;
-        }
-
         temp.course_descriptor = course_descriptor;
         temp.lec_num = lec_num;
         return temp;
@@ -2653,6 +2703,7 @@ class TutorialData
     String name; // the full name of the lecture
     boolean is_evng; // is this an evening lecture
     int lec_num; // e.g. LEC 01 -> lec_num = 1 (defualt to 1 if not included)
+    boolean use_section = false; // if this tutorial bellongs to all lectures in a section, then set this to true
     int tut_num; // e.g. TUT/LAB 04 -> tut_num = 4
     boolean is_al; // is this an active learning tutorial or not
 
@@ -2673,16 +2724,27 @@ class TutorialData
      * @param id the unique id to give this tutorial
      * @return a lecture data structure
      */
-    public Tutorial ConvertToTutorial(int _id)
+    public Tutorial ConvertToTutorial(int _id, int section, int lecture)
     {
         Tutorial temp = new Tutorial();
         id = _id;
         temp.id = _id;
         temp.is_al = is_al;
         temp.is_evng = is_evng;
+        if(use_section)
+        {
+            temp.lec_num = 0;
+            temp.section = section;
+        }
+        else
+        {
+            temp.lec_num = lec_num;
+            temp.section = -1;
+            // set the lecture as the only entry in parent lectures
+            temp.parent_lectures = new int[1];
+            temp.parent_lectures[0] = lecture;
+        }
         temp.name = name;
-
-        temp.lec_num = lec_num;
         temp.tut_num = tut_num;
         temp.course_descriptor = course_descriptor;
         return temp;
