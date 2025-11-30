@@ -180,8 +180,34 @@ public final class Functions
 
     private static int EvalPref(Problem pr, Environment env)
     {
-        return 0;
+        int lecPenalty = 0;
+        int tutPenalty = 0;
+
+        // Sum of lecture penalties
+        for (int i = 0; i < pr.lectures.length; i++) {
+            int slotId = pr.lectures[i];
+
+            // skip unassigned
+            if (slotId >= 0) { 
+                Lecture lec = env.lectures[i];
+                lecPenalty += lec.preferences.getOrDefault(slotId, 0);
+            }
+        }
+
+        // Sum of tutorial penalites
+        for (int i = 0; i < pr.tutorials.length; i++) {
+            int slotId = pr.tutorials[i];
+
+            //skip unassigned
+            if (slotId >= 0) {
+                Tutorial tut = env.tutorials[i];
+                tutPenalty += tut.preferences.getOrDefault(slotId, 0);
+            }
+        }
+
+        return lecPenalty + tutPenalty;
     }
+
     
     private static int EvalPair(Problem pr, Environment env)
     {
