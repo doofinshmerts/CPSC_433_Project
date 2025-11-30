@@ -185,6 +185,16 @@ public class AndSearch
         if (env.best_sol != null) {
             System.out.println("Search Finished.");
             Functions.PrintProblem(env.best_sol, env);
+            // Copy best solution to sf if needed (though Main ignores sf usually)
+            // If sf is meant to be the output, we should copy fields.
+            // But Main calls RunSearch(pr) and then ignores pr. 
+            // It prints from env.best_sol? No, Main.java:
+            // if(InputParser.ParseInputFile...) {
+            //    AndSearch search = new AndSearch(env, s0);
+            //    Problem pr = new Problem();
+            //    search.RunSearch(pr);
+            // }
+            // Main does NOT print the result! RunSearch calls PrintProblem at the end.
             return true;
         }
         
@@ -213,6 +223,9 @@ class FLeafComparator implements Comparator<Problem>
         // 4: tie break on problem unique id 
         
         // Sort by solvable
+        // boolean p1_solvable = Functions.Solvable(p1, null); 
+        
+        // Sort by depth (Depper = more assigned = better)
         if (p1.depth > p2.depth)
         {
             return -1;
@@ -223,10 +236,6 @@ class FLeafComparator implements Comparator<Problem>
         }
 
         // Sort by MinBoundScore (Lower is better)
-        // We can use current score as proxy or calculate MinBoundScore
-        // MinBoundScore is also expensive.
-        // Usually you store 'f_score' in Problem.
-        
         if (p1.score < p2.score) {
             return -1;
         }

@@ -253,13 +253,6 @@ public final class Functions
         // initialize an array for holding the al slots fill values
         int[] slot_al_fill = new int[env.lec_slots_array.length];
 
-        // ### TODO ###: replace this fill counting by recording the fill values in the Problem class
-        for(int i = 0; i < slot_fill.length; i++)
-        {
-            slot_fill[i] = 0;
-            slot_al_fill[i] = 0;
-        }
-
         // count the number of elements in each slot
         for(int i = 0; i < pr.lectures.length; i++)
         {
@@ -445,13 +438,6 @@ public final class Functions
         // initialize an array for holding the al slots fill values
         int[] slot_al_fill = new int[env.tut_slots_array.length];
 
-        // ### TODO ###: replace this fill counting by recording the fill values in the Problem class
-        for(int i = 0; i < slot_fill.length; i++)
-        {
-            slot_fill[i] = 0;
-            slot_al_fill[i] = 0;
-        }
-
         // count the number of elements in each slot
         for(int i = 0; i < pr.tutorials.length; i++)
         {
@@ -611,6 +597,7 @@ public final class Functions
             }
         }
     } 
+
     /**
      * Calculates the rank of a lecture based on its constraints.
      * Higher rank means it should be assigned earlier.

@@ -55,7 +55,7 @@ public final class InputParser
             return false;
         }
 
-        // Get the dataset name ###########################################################################################
+        // Get the dataset name
         String name = ParseForName(bufferedReader);
         if(name == null || name.isEmpty())
         {
@@ -64,7 +64,7 @@ public final class InputParser
         }
         env.dataset_name = name;
 
-        // Get the Lecture Slots ###########################################################################################
+        // Get the Lecture Slots
         HashMap<Integer, Slot> lecture_slots = new HashMap<Integer, Slot>();
         if(!ParseLectureSlots(bufferedReader, lecture_slots))
         {
@@ -84,7 +84,7 @@ public final class InputParser
             k++;
         }
 
-        // Get the Tutorial Slots #############################################################################################
+        // Get the Tutorial Slots
         HashMap<Integer, Slot> tutorial_slots = new HashMap<Integer, Slot>();
         if(!ParseTutorialSlots(bufferedReader, tutorial_slots))
         {
@@ -165,7 +165,7 @@ public final class InputParser
             env.lecslot_tutslot[i] = lec_to_tut_slot.get(i);
         }
 
-        // Get the Lectures ######################################################################################################
+        // Get the Lectures
         // key is the course identifier (name and number), The key for the inner map is the lecture number 
         HashMap<String, HashMap<Integer, LectureData>> lec_tut_data = new HashMap<String, HashMap<Integer, LectureData>>();
         if(!ParseLectureData(bufferedReader, lec_tut_data))
@@ -181,7 +181,7 @@ public final class InputParser
         }
         env.num_lectures = count;
         
-        // Get the tutorials ######################################################################################################
+        // Get the tutorials
         if(!ParseTutorialData(bufferedReader, lec_tut_data))
         {
             System.out.println("Could not get the tutorial data from file: " + input_file);
@@ -207,7 +207,7 @@ public final class InputParser
         }
         env.num_tutorials = count;
 
-        // Convert TutorialData and lectureData to Tutorials and Lectures #########################################################################################
+        // Convert TutorialData and lectureData to Tutorials and Lectures
         
         int t_count = 0;
         int l_count = 0;
@@ -234,7 +234,7 @@ public final class InputParser
                 for(TutorialData tut: temp)
                 {
                     // convert this Tutorial data to a Tutorial
-                    env.tutorials[t_count] = tut.ConvertToTutorial(t_count);            
+                    env.tutorials[t_count] = tut.ConvertToTutorial(t_count);
                     // increment the tutorial count
                     t_count++;
 
@@ -272,28 +272,28 @@ public final class InputParser
             }
         }
 
-        // Parse Not Compatible ##################################################################################################################
+        // Parse Not Compatible
         if(!ParseNotCompatible(bufferedReader, env.lectures, env.tutorials, lec_tut_data))
         {
             System.out.println("Could not get not compatible data from file: " + input_file);
             return false;
         }
 
-        // Parse Unwanted ################################################################################################################################
+        // Parse Unwanted
         if(!ParseUnwanted(bufferedReader, env.lectures, env.tutorials, lec_tut_data, env.tutorial_slots, env.lecture_slots))
         {
             System.out.println("Could not get unwanted data from file: " + input_file);
             return false;
         }
 
-        // Parse Preferences #################################################################################################################################
+        // Parse Preferences
         if(!ParsePreferences(bufferedReader, env.lectures, env.tutorials, lec_tut_data, env.tutorial_slots, env.lecture_slots))
         {
             System.out.println("Could not get preferences data from file: " + input_file);
             return false;
         }
 
-        // Parse Pair #################################################################################################################################################
+        // Parse Pair
         ArrayList<Pair> pairs = new ArrayList<Pair>();
         if(!ParsePairs(bufferedReader, lec_tut_data, pairs))
         {
@@ -308,7 +308,7 @@ public final class InputParser
             env.pairs[i] = pairs.get(i);
         }
 
-        // Parse Partial Assignments ######################################################################################################################################
+        // Parse Partial Assignments
         ArrayList<UnwantedPair> part_assign_lec = new ArrayList<UnwantedPair>();
         ArrayList<UnwantedPair> part_assign_tut = new ArrayList<UnwantedPair>();
         if(!ParsePartialAssignments(bufferedReader, env.lecture_slots, env.tutorial_slots, lec_tut_data, part_assign_tut, part_assign_lec))
@@ -487,21 +487,23 @@ public final class InputParser
         System.out.println("dataset name: " + env.dataset_name);
         
         // print the lecture slots
-        System.out.println("\nLecture slots ############################################################\nsize: " + env.lecture_slots.size());
+        System.out.println("\nLecture slots:");
+        System.out.println("size: " + env.lecture_slots.size());
         for(int i = 0; i < env.lec_slots_array.length; i++)
         {
             env.lec_slots_array[i].PrintSlot();
         }
 
         // print the tutorial slots
-        System.out.println("\nTutorial slots ###########################################################\nsize: " + env.tutorial_slots.size());
+        System.out.println("\nTutorial slots:");
+        System.out.println("size: " + env.tutorial_slots.size());
         for(int i = 0; i < env.tut_slots_array.length; i++)
         {
             env.tut_slots_array[i].PrintSlot();
         }
 
         // print map of tutorial slots to lecture slots
-        System.out.println("\nMap of Tutorial slots to lecture slots ###################################\n");
+        System.out.println("\nMap of Tutorial slots to lecture slots:");
         for(int i = 0; i < env.tutslot_lecslot.length; i++)
         {
             System.out.println("tutorial id: " + i);
@@ -512,7 +514,7 @@ public final class InputParser
         }
 
         //print map of lecture slots to tutorial slots
-        System.out.println("\nMap of Lecture Slots to Tutorial Slots ####################################\n");
+        System.out.println("\nMap of Lecture Slots to Tutorial Slots:");
         for(int i = 0; i < env.lecslot_tutslot.length; i++)
         {
             System.out.println("lecture id: " + i);
@@ -523,7 +525,7 @@ public final class InputParser
         }
 
         // Print the Lectures and Tutorials
-        System.out.println("\nLecture and Tutorial Data ##################################################\n");
+        System.out.println("\nLecture and Tutorial Data:");
         // set parent lecture number in each tutorial for backwards lookup
         for(int i = 0; i < env.num_lectures; i++)
         {
@@ -540,7 +542,7 @@ public final class InputParser
         }
 
         // print the sections map
-        System.out.println("\nSections ###################################################################\n");
+        System.out.println("\nSections:");
         int j = 0;
         for(Integer[] elm: env.sections.values())
         {
@@ -553,14 +555,14 @@ public final class InputParser
         }
 
         // print the 5xx lectures
-        System.out.println("\nLectures 5XX ###############################################################\n");
+        System.out.println("\nLectures 5XX:");
         for(int i = 0; i < env.lectures_5xx.length; i++)
         {
             env.lectures[env.lectures_5xx[i]].PrintData();
         }
 
         // print the not compatible assignments
-        System.out.println("\nNot compatible data from Lectures ###########################################\n");
+        System.out.println("\nNot compatible data from Lectures:");
         // set parent lecture number in each tutorial for backwards lookup
         for(int i = 0; i < env.num_lectures; i++)
         {
@@ -583,7 +585,7 @@ public final class InputParser
             
         }
         // print the not compatible assignments
-        System.out.println("\nNot compatible data from Tutorials ############################################\n");
+        System.out.println("\nNot compatible data from Tutorials:");
         // set parent lecture number in each tutorial for backwards lookup
         for(int i = 0; i < env.num_tutorials; i++)
         {
@@ -607,7 +609,7 @@ public final class InputParser
         }
 
         // print Unwanted
-        System.out.println("\nUnwanted ########################################################################\n");
+        System.out.println("\nUnwanted:");
         for(int i = 0; i < env.num_lectures; i++)
         {
             env.lectures[i].PrintData();
@@ -633,7 +635,7 @@ public final class InputParser
         }
 
         // print preferences for lectures
-        System.out.println("\nPreferences #######################################################################\n");
+        System.out.println("\nPreferences:");
         for(int i = 0; i < env.num_lectures; i++)
         {
             env.lectures[i].PrintData();
@@ -660,7 +662,7 @@ public final class InputParser
         }
 
         // print the pairs
-        System.out.println("\nPairs ###############################################################################");
+        System.out.println("\nPairs:");
         for(int i = 0; i < env.pairs.length; i++)
         {
             Pair p = env.pairs[i];
@@ -686,7 +688,7 @@ public final class InputParser
         }
 
         // print the partial assignments
-        System.out.println("\nPartial assignments ##################################################################");
+        System.out.println("\nPartial assignments:");
 
         for(int i = 0; i < part_assign_lec.size(); i++)
         {
@@ -812,7 +814,7 @@ public final class InputParser
         }
 
         // load the lecture data
-        while((nextLine != null) && (!nextLine.contains(HEADINGS[9])) )
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[9])) ) // HEADINGS[9] is "Partial assignments:"
         {
             // object for holding retreved lecture data
             Pair pair = new Pair();
@@ -873,7 +875,7 @@ public final class InputParser
         }
 
         // load the lecture data
-        while((nextLine != null) && (!nextLine.contains(HEADINGS[8])) )
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[8])) ) // HEADINGS[8] is "Pair:"
         {
             // object for holding retreved lecture data
             Preference pref = new Preference();
@@ -1135,7 +1137,7 @@ public final class InputParser
         }
 
         // load the lecture data
-        while((nextLine != null) && (!nextLine.contains(HEADINGS[7])) )
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[7])) ) // HEADINGS[7] is "Preferences:"
         {
             // object for holding retreved lecture data
             UnwantedPair pair = new UnwantedPair();
@@ -1329,7 +1331,7 @@ public final class InputParser
         }
 
         // load the lecture data
-        while((nextLine != null) && (!nextLine.contains(HEADINGS[6])) )
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[6])) ) // HEADINGS[6] is "Unwanted:"
         {
             // object for holding retreved lecture data
             Pair pair = new Pair();
@@ -1345,7 +1347,7 @@ public final class InputParser
                         lectures[pair.id2].not_compatible_lec.add(pair.id1);
                     }
                     else
-                    {   
+                    {	
                         // 1:lecture, 2:tutorial
                         lectures[pair.id1].not_compatible_tut.add(pair.id2);
                         tutorials[pair.id2].not_compatible_lec.add(pair.id1);
@@ -1421,7 +1423,7 @@ public final class InputParser
                 }
             }
             else
-            {   
+            {	
                 if(!ParseForLecTutPair(elements[0], elements[1], pair, lec_tut_data))
                 {
                     return false;
@@ -1805,7 +1807,7 @@ public final class InputParser
         }
 
         // load the lecture data
-        while((nextLine != null) && (!nextLine.contains(HEADINGS[5])) )
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[5])) ) // HEADINGS[5] is "Not compatible:"
         {
             // object for holding retreved lecture data
             TutorialData temp_tut = new TutorialData();
@@ -2077,7 +2079,7 @@ public final class InputParser
         }
 
         // load the lecture data
-        while((nextLine != null) && (!nextLine.contains(HEADINGS[4])) )
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[4])) ) // HEADINGS[4] is "Tutorials:"
         {
             // object for holding retreved lecture data
             LectureData temp_lec = new LectureData();
@@ -2089,29 +2091,29 @@ public final class InputParser
                 {
                     // already exists so get the current map of lecturData elements to add to
                     HashMap<Integer, LectureData> temp = lec_tut_data.get(temp_lec.course_descriptor);
-                    if(!temp.containsKey(temp_lec.lec_num))
+                    if(temp.containsKey(temp_lec.lec_num))
+                    {
+                        System.out.println("INPUT WARNING: (Lectures) attempt to add lecture twice: " + temp_lec.course_descriptor + " " + temp_lec.lec_num);
+                    }
+                    else
                     {
                         temp.put(temp_lec.lec_num, temp_lec);
                         lec_tut_data.put(temp_lec.course_descriptor, temp);
                     }
-                    else
-                    {
-                        System.out.println("INPUT WARNING: (lectures) attempt to add same lecture twice: " + nextLine);
-                    }
                 }
                 else
                 {
-                    // does not exist yet, so create a new map for this course descriptor
+                    // does not exist so add it
                     HashMap<Integer, LectureData> temp = new HashMap<Integer, LectureData>();
                     temp.put(temp_lec.lec_num, temp_lec);
                     lec_tut_data.put(temp_lec.course_descriptor, temp);
-
                 }
             }
             else
             {
-                System.out.println("INPUT WARNING: (lectures) invalid information in line: " + nextLine);
+                System.out.println("INPUT WARNING: (Lectures) invalid information in line: " + nextLine);
             }
+
             // read the next line from the file
             try{
                 nextLine = bufferedReader.readLine();
@@ -2131,65 +2133,9 @@ public final class InputParser
     } 
 
     /**
-     * takes a string and tries to convert it to only the basic lecture data (course_descriptor and lecture number
-     * @param line the line to parse for the lecture information
-     * @param lec the lecture data structure to retrun the information in
-     * @return true if the line could be parsed for lecture data, false otherwise
-     */
-    private static boolean TryGetLectureBasicFromLine(String line, LectureData lec)
-    {
-        // split the string by ',' deliminator
-        String[] elements;
-
-        // split the line on the key word LEC
-        if(line.contains("LEC"))
-        {
-            elements = line.split("LEC");
-        }
-        else
-        {
-            return false;
-        }
-
-
-        // there must be 2 elements (course_descriptor, lecture number + AL)
-        if(elements.length != 2)
-        {
-            return false;
-        }
-
-        elements[0] = elements[0].strip();
-        elements[1] = elements[1].strip();
-
-        // record the course descriptor
-        lec.course_descriptor = elements[0];
-
-        // get the course number and AL
-        elements = elements[1].split(",");
-        
-        // there should be 2 elements
-        if(elements.length > 1)
-        {
-            return false;
-        }
-
-        // convert the strings to a number
-        int[] buffer = new int[1];
-        if(!GetSafeIntFromString(elements[0], buffer))
-        {
-            return false;
-        }
-        
-        // record the lecture number
-        lec.lec_num = buffer[0];
-
-        return true;
-    }
-
-    /**
      * takes a string and tries to convert it to lecture data
-     * @param line the line to parse for the lecture information
-     * @param lec the lecture data structure to retrun the information in
+     * @param line the line to parse for the lecture data
+     * @param lec the lecture data structure to return the information in
      * @return true if the line could be parsed for lecture data, false otherwise
      */
     private static boolean TryGetLectureFromLine(String line, LectureData lec)
@@ -2290,14 +2236,61 @@ public final class InputParser
     }
 
     /**
-     * Parse the input file for the data set name bellow the keyword "Name:"
-     * @param bufferedReader the file reader to get the lines from
-     * @return the name of the dataset, null or empty if not found
+     * takes a string and tries to convert it to basic lecture data (course_descriptor, lecture number)
+     * @param line the line to parse for the lecture data
+     * @param lec the lecture data structure to return the information in
+     * @return true if the line could be parsed for lecture data, false otherwise
      */
+    private static boolean TryGetLectureBasicFromLine(String line, LectureData lec)
+    {
+        // split on "LEC"
+        String[] lec_info;
+        if(line.contains("LEC"))
+        {
+            lec_info = line.split("LEC");
+        }
+        else
+        {
+            return false;
+        }
+
+        // ensure that there is course descriptor and lecture number
+        if(lec_info.length != 2)
+        {
+            return false;
+        }
+
+        // get the course descriptor and lecture number
+        lec_info[0] = lec_info[0].strip();
+        lec_info[1] = lec_info[1].strip();
+
+        // record the course descriptor
+        lec.course_descriptor = lec_info[0];
+        
+        // convert the strings to a number
+        int[] buffer = new int[1];
+        if(!GetSafeIntFromString(lec_info[1], buffer))
+        {
+            return false;
+        }
+        
+        // record the lecture number
+        lec.lec_num = buffer[0];
+
+        return true;
+    }
+
+    /**
+     * Parse the input for the dataset name
+     * @param bufferedReader the buffer for the file to read from
+     * @return the name of the dataset if it could be found, otherwise null
+     */ 
     private static String ParseForName(BufferedReader bufferedReader)
     {
         // read each line from the file
         String nextLine;
+
+        // read the first line
         try{
             nextLine = bufferedReader.readLine();
         }catch (IOException e)
@@ -2305,10 +2298,9 @@ public final class InputParser
             return null;
         }
 
-        // loop through each line until we find the first heading "NAME"
-        while((nextLine != null) && !nextLine.contains(HEADINGS[0]))
+        // check if the first line is the Name heading
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[0])) ) // HEADINGS[0] is "Name:"
         {
-            // read the next line from the file
             try{
                 nextLine = bufferedReader.readLine();
             }catch (IOException e)
@@ -2317,7 +2309,13 @@ public final class InputParser
             }
         }
 
-        // read the next line from the file
+        // check that the next line is not null
+        if(nextLine == null)
+        {
+            return null;
+        }
+
+        // read the line with the name
         try{
             nextLine = bufferedReader.readLine();
         }catch (IOException e)
@@ -2325,31 +2323,27 @@ public final class InputParser
             return null;
         }
 
-        // get the dataset name (the first non-empty line after the "Name:" heading)
-        while((nextLine != null) && (nextLine.length() == 0))
+        // check that the name is not null
+        if(nextLine == null)
         {
-            // read the next line from the file
-            try{
-                nextLine = bufferedReader.readLine();
-            }catch (IOException e)
-            {
-                return null;
-            }
+            return null;
         }
 
-        return nextLine;
+        return nextLine.strip();
     }
 
     /**
      * Parse the input file for the lecture slots
-     * @param bufferedReader the file reader to get the lines from
-     * @param lecture_slots the hashmap of lecture slots to put the results in
+     * @param bufferedReader the buffer for the file to read from
+     * @param lecture_slots the map to store the lecture slots in
      * @return true if parse was successfull, false if errors occured
      */
     private static boolean ParseLectureSlots(BufferedReader bufferedReader, HashMap<Integer, Slot> lecture_slots)
     {
         // read each line from the file
         String nextLine;
+
+        // read the next line from the file
         try{
             nextLine = bufferedReader.readLine();
         }catch (IOException e)
@@ -2357,10 +2351,9 @@ public final class InputParser
             return false;
         }
 
-        // loop through each line until we find the first heading "Lecture slots"
-        while((nextLine != null) && !nextLine.contains(HEADINGS[1]))
+        // check that the next line is the lecture slot heading
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[1])) ) // HEADINGS[1] is "Lecture slots:"
         {
-            // read the next line from the file
             try{
                 nextLine = bufferedReader.readLine();
             }catch (IOException e)
@@ -2369,6 +2362,12 @@ public final class InputParser
             }
         }
 
+        // check that the next line is not null
+        if(nextLine == null)
+        {
+            return false;
+        }
+
         // read the next line from the file
         try{
             nextLine = bufferedReader.readLine();
@@ -2377,18 +2376,22 @@ public final class InputParser
             return false;
         }
 
-        // load the lecture slots
-        while((nextLine != null) && (!nextLine.contains(HEADINGS[2])) )
+        // load the slots
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[2])) ) // HEADINGS[2] is "Tutorial slots:"
         {
-            Slot temp_slot = new Slot();
-            if(TryGetSlotFromLine(nextLine, temp_slot))
+            // object for holding retreved slot data
+            Slot temp = new Slot();
+            // try to get the slot data from the string
+            if(TryGetSlotFromLine(nextLine, temp))
             {
-                lecture_slots.put(temp_slot.lec_hash,temp_slot);
+                // if slot data was found then add it to the hashmap
+                lecture_slots.put(temp.lec_hash, temp);
             }
             else
             {
                 System.out.println("INPUT WARNING: (lecture slots) invalid information in line: " + nextLine);
             }
+
             // read the next line from the file
             try{
                 nextLine = bufferedReader.readLine();
@@ -2405,12 +2408,12 @@ public final class InputParser
         }
 
         return true;
-    } 
+    }
 
     /**
      * Parse the input file for the tutorial slots
-     * @param bufferedReader the file reader to get the lines from
-     * @param tutorial_slots the hashmap of tutorial slots to put the results in
+     * @param bufferedReader the buffer for the file to read from
+     * @param tutorial_slots the map to store the tutorial slots in
      * @return true if parse was successfull, false if errors occured
      */
     private static boolean ParseTutorialSlots(BufferedReader bufferedReader, HashMap<Integer, Slot> tutorial_slots)
@@ -2426,18 +2429,22 @@ public final class InputParser
             return false;
         }
 
-        // load the tutorial slots
-        while((nextLine != null) && (!nextLine.contains(HEADINGS[3])) )
+        // load the slots
+        while((nextLine != null) && (!nextLine.contains(HEADINGS[3])) ) // HEADINGS[3] is "Lectures:"
         {
-            Slot temp_slot = new Slot();
-            if(TryGetSlotFromLine(nextLine, temp_slot))
+            // object for holding retreved slot data
+            Slot temp = new Slot();
+            // try to get the slot data from the string
+            if(TryGetSlotFromLine(nextLine, temp))
             {
-                tutorial_slots.put(temp_slot.tut_hash,temp_slot);
+                // if slot data was found then add it to the hashmap
+                tutorial_slots.put(temp.tut_hash, temp);
             }
             else
             {
                 System.out.println("INPUT WARNING: (tutorial slots) invalid information in line: " + nextLine);
             }
+
             // read the next line from the file
             try{
                 nextLine = bufferedReader.readLine();
@@ -2454,10 +2461,10 @@ public final class InputParser
         }
 
         return true;
-    } 
+    }
 
     /**
-     * takes a string and tries to convert it to basic slot information (Day and time)
+     * takes a string and tries to convert it to a basic slot (day and time)
      * @param line the line to parse for the slot information
      * @param slot the slot to put the return data into
      * @return true if the line could be parsed for slot information, false otherwise
@@ -2466,14 +2473,15 @@ public final class InputParser
     {
         // split the string by ',' deliminator
         String[] elements = line.split(",");
-                
-        // there must be 5 elements (day,time,lecturemax,lecturemin,allecturemax)
-        if(elements.length < 2)
+        // there must be 2 elements (day,time)
+        if(elements.length != 2)
         {
             return false;
         }
-       
+        return_slot.name = line;
+
         elements[0] = elements[0].strip();
+
         // get the day
         switch(elements[0])
         {
