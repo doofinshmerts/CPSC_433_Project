@@ -9,6 +9,10 @@ public class AndSearch
 {
     // the environment
     Environment env;
+
+    // how often should status be printed
+    int status_update_freq = 10000; // once every x iterations
+
     // the tree in the form of a priority queue (next leaf to expand on top)
     PriorityQueue<Problem> tree = new PriorityQueue<Problem>(10, new FLeafComparator(env));
 
@@ -23,6 +27,15 @@ public class AndSearch
         tree.add(_s0);
     }
 
+    private void PrintQueue()
+    {
+        while(!tree.isEmpty())
+        {
+            Problem pr = tree.poll();
+            System.out.println(String.format("Problem score: " + pr.min_score + ", depth: " + pr.depth));
+        }
+    }
+
     /**
      * run the and tree search
      * best solution is returned in the environment
@@ -31,18 +44,21 @@ public class AndSearch
     public boolean RunSearch()
     {
         // start a timer
-        long start_time = System.currentTimeMillis();
+        long start_time = System.nanoTime();
         long current_time = start_time;
-        long elapsed_time = 0;
+        double elapsed_time = 0;
 
         // start the loop
         for(int i = 0; i < env.max_iterations; i++)
         {  
             // timing
-            current_time = System.currentTimeMillis();
-            elapsed_time = (current_time - start_time);
+            current_time = System.nanoTime();
+            elapsed_time = ((double)(current_time - start_time)) / 1000000000.0;
 
-            System.out.println(String.format("Elapsed Time: %d, Iterations: %d", elapsed_time, i));
+            if(i % status_update_freq == 0)
+            {
+                System.out.println(String.format("Elapsed Time: %10.2f, Iterations: %10d, tree size: %10d, Best so far: %10d", elapsed_time, i, tree.size(), env.best_score));
+            }
 
             // time bound
             if(elapsed_time >= env.time_limit)
@@ -68,6 +84,8 @@ public class AndSearch
             // run a search step
             SearchStep();
         }
+
+        //PrintQueue();
 
         // indicate if a solution has been found or not
         if(env.solution_found)
@@ -100,6 +118,7 @@ public class AndSearch
         // check to see if the problem is pruneable
         if(top_problem.min_score >= env.best_score)
         {
+            //System.out.println("Bound");
             // simply do not put the problem back into the queue and return
             return;   
         }
@@ -107,6 +126,7 @@ public class AndSearch
         // check to see if the problem has all lectures and tutorials assigned
         if(top_problem.AllAssigned())
         {
+            //System.out.println("assigned");
             // try to get this problems score and record it if it is the best
             int score = Functions.Eval(top_problem, env);
             //System.out.println("score: " + score);
@@ -121,9 +141,11 @@ public class AndSearch
             return;
         }
 
+        
         // check to see if it is solvable
         if(Functions.NotSatisfiable(top_problem, env))
         {
+            //System.out.println("not satisfyable");
             // solvable in this case means that the constraints could not be met with the existing assignments
             // so do not put this back into the tree
             return;
@@ -140,6 +162,10 @@ public class AndSearch
            
             // add all problem derivations that can stem from top_problem
             int[] valid_slots = Functions.ValidLectureSlots(env, selected.id, top_problem);
+            if(valid_slots == null)
+            {
+                return;
+            }
             // try all possible assignments
             for(int slot : valid_slots)
             {
@@ -156,6 +182,10 @@ public class AndSearch
             boolean al = env.tutorials[selected.id].is_al;
             // add all problem derivations that can stem from top_problem
             int[] valid_slots = Functions.ValidTutSlots(env, selected.id, top_problem);
+            if(valid_slots == null)
+            {
+                return;
+            }
             // try all possible assignments
             for(int slot : valid_slots)
             {

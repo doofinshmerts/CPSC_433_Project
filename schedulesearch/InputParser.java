@@ -373,6 +373,96 @@ public final class InputParser
         // if exists add partial constraint CPSC 913 to TU 18:00
         // if exists add unwanted for any CPSC 351 to time overlapping 18:00 to 19:00
         // if exists add unwanted for any CPSC 413 to time overlapping 18:00 to 19:00
+
+        // Special Constraint: CPSC 851 / CPSC 913 dependencies
+        if(lec_tut_data.containsKey("CPSC 351"))
+        {
+            // Find CPSC 851 TUT
+            int targetTutId = -1;
+            for(Tutorial t : env.tutorials) {
+                if(t.course_descriptor.equals("CPSC 851") && t.lec_num == 1 && t.tut_num == 1) {
+                    targetTutId = t.id;
+                    break;
+                }
+            }
+            
+            // Find Slot TU 18:00 (Tutorial Slot)
+            int targetSlotId = -1;
+            for(Slot s : env.tut_slots_array) {
+                if(s.day == 1 && s.hour == 18 && s.minute == 0) {
+                    targetSlotId = s.id;
+                    break;
+                }
+            }
+
+            if(targetTutId != -1 && targetSlotId != -1) {
+                // Add partial assignment
+                UnwantedPair specialAssign = new UnwantedPair();
+                specialAssign.is_lec = false;
+                specialAssign.id = targetTutId;
+                specialAssign.slot_id = targetSlotId;
+                part_assign_tut.add(specialAssign);
+                
+                // Add incompatibilities with CPSC 351
+                HashMap<Integer, LectureData> cpsc351 = lec_tut_data.get("CPSC 351");
+                for(LectureData ld : cpsc351.values()) {
+                    // Incompatible with Lecture
+                    env.lectures[ld.id].not_compatible_tut.add(targetTutId);
+                    env.tutorials[targetTutId].not_compatible_lec.add(ld.id);
+                    
+                    // Incompatible with Tutorials
+                    for(TutorialData td : ld.tutorials) {
+                        env.tutorials[td.id].not_compatible_tut.add(targetTutId);
+                        env.tutorials[targetTutId].not_compatible_tut.add(td.id);
+                    }
+                }
+            }
+        }
+
+        // If CPSC 413 exists -> Schedule CPSC 913 TUT at TU 18:00
+        if(lec_tut_data.containsKey("CPSC 413"))
+        {
+            // Find CPSC 913 TUT
+            int targetTutId = -1;
+            for(Tutorial t : env.tutorials) {
+                if(t.course_descriptor.equals("CPSC 913") && t.lec_num == 1 && t.tut_num == 1) {
+                    targetTutId = t.id;
+                    break;
+                }
+            }
+            
+            // Find Slot TU 18:00 (Tutorial Slot)
+            int targetSlotId = -1;
+            for(Slot s : env.tut_slots_array) {
+                if(s.day == 1 && s.hour == 18 && s.minute == 0) {
+                    targetSlotId = s.id;
+                    break;
+                }
+            }
+
+            if(targetTutId != -1 && targetSlotId != -1) {
+                // Add partial assignment
+                UnwantedPair specialAssign = new UnwantedPair();
+                specialAssign.is_lec = false;
+                specialAssign.id = targetTutId;
+                specialAssign.slot_id = targetSlotId;
+                part_assign_tut.add(specialAssign);
+                
+                // Add incompatibilities with CPSC 413
+                HashMap<Integer, LectureData> cpsc413 = lec_tut_data.get("CPSC 413");
+                for(LectureData ld : cpsc413.values()) {
+                    // Incompatible with Lecture
+                    env.lectures[ld.id].not_compatible_tut.add(targetTutId);
+                    env.tutorials[targetTutId].not_compatible_lec.add(ld.id);
+                    
+                    // Incompatible with Tutorials
+                    for(TutorialData td : ld.tutorials) {
+                        env.tutorials[td.id].not_compatible_tut.add(targetTutId);
+                        env.tutorials[targetTutId].not_compatible_tut.add(td.id);
+                    }
+                }
+            }
+        }
         
         // apply the partial assignments to the starting state #################################################################################################################
         
@@ -470,7 +560,7 @@ public final class InputParser
         // print the name of the data set
         System.out.println("dataset name: " + env.dataset_name);
 
-        System.out.println(String.format("w_minfilled: %d\nw_pref: %d\nw_pair: %d\nw_secdiff: %d\npen_lecturemin: %d\npen_tutorialmin: %d\npen_notpaired: %d\npen_section: %d\nmax_iterations: %d\ntime_limit: %d\n",
+        System.out.println(String.format("w_minfilled: %d\nw_pref: %d\nw_pair: %d\nw_secdiff: %d\npen_lecturemin: %d\npen_tutorialmin: %d\npen_notpaired: %d\npen_section: %d\nmax_iterations: %d\ntime_limit: %4.0f\n",
             env.w_minfilled,
             env.w_pref,
             env.w_pair,

@@ -26,15 +26,9 @@ public class Environment
     // max iterations
     int max_iterations;
     // time limit in seconds
-    long time_limit; 
+    double time_limit; 
 
     // RECORD ############################################################################################
-    // the current execution time since the start of the search
-    long current_time = 0;
-    // the start time (needed for measuring time since timer does not start at zero)
-    long start_time = 0;
-    // the number of iterations used so far
-    int iterations = 0;
     // the best solution found so far
     Problem best_sol;
     // the score of the best solution found so far
@@ -112,7 +106,7 @@ public class Environment
         pen_notpaired = _pen_notpaired;
         pen_section = _pen_section;
         max_iterations = _max_iterations;
-        time_limit = ((long)_time_limit) * 1000000;
+        time_limit = (double)_time_limit;
     }
 
     /**

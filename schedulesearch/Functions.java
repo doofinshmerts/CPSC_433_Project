@@ -1,5 +1,6 @@
 package schedulesearch;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -82,27 +83,6 @@ public final class Functions
         // sudo code 
         // during each expansion, only one lecture or tutorial is assigned, so depth is the number of tutorials and lectures assigned
         // maybe add a feild to Problem that records the depth in the tree and just return that
-
-        // variable for depth value
-        int depth = 0;
-        // iterate through all lectures
-        for (int i = 0; i < pr.lectures.length; i++) {
-            // if lecture is null then continue looping
-            if (pr.lectures[i] == -1) {
-                continue;
-            }
-            // otherwise this lecture has been assigned so increase depth count by 1
-            depth++;
-        }
-        // iterate through all tutorials
-        for (int i = 0; i < pr.tutorials.length; i++) {
-            // if tutorial is null then continue looping
-            if (pr.tutorials[i] == -1) {
-                continue;
-            }
-            // otherwise this tutorial has been assigned so increase depth count by 1
-            depth++;
-        }
         // return the depth count, return depth if we want to use function instead of pr.depth
         return pr.depth;
     }
@@ -116,8 +96,8 @@ public final class Functions
     public static int MinBoundScore(Problem pr, Environment env)
     {
         // EvalPref and EvalSecDiff are permenant scores that cannot be reduced as more assignments are made
-        int sum = EvalPref(pr, env);
-        sum += EvalSecDiff(pr, env);
+        int sum = EvalPref(pr, env) * env.w_pref;
+        sum += EvalSecDiff(pr, env) * env.w_secdiff;
         return sum;
     }
 
@@ -129,10 +109,10 @@ public final class Functions
      */
     public static int Eval(Problem pr, Environment env)
     {
-        int sum = EvalMinFilled(pr, env);
-        sum += EvalPref(pr, env);
-        sum += EvalPair(pr, env);
-        sum += EvalSecDiff(pr, env);
+        int sum = EvalMinFilled(pr, env) * env.w_minfilled;
+        sum += EvalPref(pr, env) * env.w_pref;
+        sum += EvalPair(pr, env) * env.w_pair;
+        sum += EvalSecDiff(pr, env) * env.w_secdiff;
         return sum;
     }
 
@@ -270,7 +250,7 @@ public final class Functions
         for(int[] lecs : env.sections.values())
         {
             // record which elements we have seen
-            HashSet<Integer> found_slots = new HashSet<Integer>();
+            HashMap<Integer, Integer> found_slots = new HashMap<Integer, Integer>();
 
             // loop through the lectures in this section
             for(int i = 0; i < lecs.length; i++)
@@ -281,15 +261,25 @@ public final class Functions
                 {
                     // if this slot has been seen before then add to the penalty
                     // otherwise add this slot to the set of found slots
-                    if(found_slots.contains(slot_id))
+                    if(found_slots.containsKey(slot_id))
                     {
-                        section_penalty++;
+                        // found another occurance of this, so increment by 1
+                        int value = found_slots.get(slot_id)+1;
+                        found_slots.put(slot_id, value);
                     }
                     else
                     {
-                        found_slots.add(slot_id);
+                        // new slot
+                        found_slots.put(slot_id, 1);
                     }
                 }
+            }
+
+            // count the number of pairs that violate this
+            for(Integer val : found_slots.values())
+            {
+                // number of unique pairs from n items is n(n-1)/2
+                section_penalty += (val*(val-1)) >> 1;
             }
         }
 
