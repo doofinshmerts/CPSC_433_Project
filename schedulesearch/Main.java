@@ -69,7 +69,7 @@ public class Main
         {
             AndSearch search = new AndSearch(env, s0);
             Problem pr = new Problem();
-            search.RunSearch(pr);
+            //search.RunSearch(pr);
         }
     }
 

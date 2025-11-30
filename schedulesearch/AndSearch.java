@@ -10,7 +10,7 @@ public class AndSearch
     // the environment
     Environment env;
     // the tree in the form of a priority queue (next leaf to expand on top)
-    PriorityQueue<Problem> tree = new PriorityQueue<Problem>(10, new FLeafComparator());
+    PriorityQueue<Problem> tree = new PriorityQueue<Problem>(10, new FLeafComparator(env));
 
     /**
      * initialization funciton for the AndSearch
@@ -37,7 +37,7 @@ public class AndSearch
         // push the new problems onto the priority queue "tree"
 
         Problem top_problem = tree.poll();
-        if(Functions.Solvable(top_problem))
+        if(Functions.Solvable(top_problem, env))
         {
             // If the current problem is has sol = yes, no unassigned lectures or tutorials,
             // and is a better solution than the previous, replace the previous solution with
@@ -117,6 +117,9 @@ public class AndSearch
  */
 class FLeafComparator implements Comparator<Problem>
 {
+    // need a reference to the environment for comparison
+    Environment env; 
+
     /**
      * This methode implements the f_leaf function to sort problems p1 and p2
      * @param p1 the first problem to sort
@@ -133,8 +136,8 @@ class FLeafComparator implements Comparator<Problem>
         // 4: tie break on problem unique id 
 
         // Sort by solvable
-        boolean p1_solvable = Functions.Solvable(p1);
-        boolean p2_solvable = Functions.Solvable(p2);
+        boolean p1_solvable = Functions.Solvable(p1, env);
+        boolean p2_solvable = Functions.Solvable(p2, env);
 
         if (p1_solvable && !p2_solvable)
         {
@@ -175,5 +178,14 @@ class FLeafComparator implements Comparator<Problem>
         {
             return -1;
         }
+    }
+
+    /**
+     * setup the comparator
+     * @param _env: the environment to use
+     */
+    public FLeafComparator(Environment _env)
+    {
+        env = _env;
     }
 }

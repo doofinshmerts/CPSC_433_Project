@@ -1986,7 +1986,7 @@ public final class InputParser
             tut.lec_num = buffer[0];
 
             // is this an evening lecture
-            if(tut.lec_num == 9)
+            if(lec_info[1].charAt(0) == '9')
             {
                 tut.is_evng = true;
             }
@@ -2002,6 +2002,7 @@ public final class InputParser
             // so set the lecture number to 1 (not important) and use section to true
             tut.lec_num = 1;
             tut.use_section = true;
+            tut.is_evng = true;
             tut.course_descriptor = elements[0];
         }
 
@@ -2221,6 +2222,8 @@ public final class InputParser
 
         // get the course number and AL
         elements = elements[1].split(",");
+        elements[0] = elements[0].stripLeading();
+        elements[1] = elements[1].stripLeading();
         
         // there should be 2 elements
         if(elements.length != 2)
@@ -2239,7 +2242,7 @@ public final class InputParser
         lec.lec_num = buffer[0];
 
         // is this an evening lecture
-        if(lec.lec_num == 9)
+        if(elements[0].charAt(0) == '9')
         {
             lec.is_evng = true;
         }
@@ -2516,7 +2519,7 @@ public final class InputParser
         {
             return false;
         }
-        return_slot.name = line;
+        return_slot.name = elements[0] + "," + elements[1].stripTrailing();
 
         // get the day
         switch(elements[0])

@@ -38,24 +38,24 @@ public final class Functions
         // lectures or tutorials then the problem is solvable
 
         // iterate through all lecs in pr
-        for (int i = 0; i < length(pr.lectures); i++) {
+        for (int i = 0; i < pr.lectures.length; i++) {
             // if a lec assignment is null, check if it has any valid slot assignments
             if (pr.lectures[i] == -1) {
                 int[] validLecs = ValidLectureSlots(env, i, pr);
                 // if there are valid slot assignments, solution can still be expanded
-                if (length(validLecs) > 0) {
+                if (validLecs.length > 0) {
                     return false;
                 }
             }
         }
 
         // iterate through all tutorials in pr
-        for (int i = 0; i < length(pr.tutorials); i++) {
+        for (int i = 0; i < pr.tutorials.length; i++) {
             // if a tut assignment is null, check if it has any valid assignments
             if (pr.tutorials[i] == -1) {
                 int[] validTuts = ValidTutSlots(env, i, pr);
                 // if there are valid assignments, solution can be expanded still
-                if (length(validTuts) > 0) {
+                if (validTuts.length > 0) {
                     return false;
                 }
             }
@@ -515,11 +515,13 @@ public final class Functions
 
         for(int i = 0; i < output.size(); i++)
         {
-            System.out.println(output.get(i).lecture + " " + output.get(i).slot);
+            String temp = String.format("%-23s: %s", output.get(i).lecture,output.get(i).slot);
+            System.out.println(temp);
 
             for(int j =0; j < output.get(i).tutorials.size(); j++)
             {
-                System.out.println(output.get(i).tutorials.get(j).tutorial + " " + output.get(i).tutorials.get(j).slot);
+                temp = String.format("%-23s: %s", output.get(i).tutorials.get(j).tutorial,output.get(i).tutorials.get(j).slot);
+                System.out.println(temp);
             }
         }
     } 
