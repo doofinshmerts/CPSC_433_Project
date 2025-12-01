@@ -158,25 +158,41 @@ public class Environment
 
     private void SumPreferences()
     {
-       // sum the preference values
-       total_pref_sum = 0;
-       // preference values for lectures 
-       for(int i = 0; i < lectures.length; i++)
-       {
-           
-           for(Integer value : lectures[i].preferences.values())
-           {
-               total_pref_sum += value;
-           }
-       }
-       // preference values for tutorials
-       for(int i = 0; i < tutorials.length; i++)
-       {
-           for(Integer value : tutorials[i].preferences.values())
-           {
-               total_pref_sum += value;
-           }
-       }    
+        // sum the preference values
+        total_pref_sum = 0;
+        // preference values for lectures 
+        for(int i = 0; i < lectures.length; i++)
+        {
+            // also record the first choice of this lecture
+            int first = 0;
+
+            for(Integer value : lectures[i].preferences.values())
+            {
+                if(value > first)
+                {
+                    first = value;
+                }
+                total_pref_sum += value;
+            }
+
+            lectures[i].first_choice = first;
+        }
+        // preference values for tutorials
+        for(int i = 0; i < tutorials.length; i++)
+        {
+            // also record the first choice of this tutorial
+            int first = 0;
+            for(Integer value : tutorials[i].preferences.values())
+            {
+                if(value > first)
+                {
+                    first = value;
+                }
+                total_pref_sum += value;
+            }
+
+            tutorials[i].first_choice = first;
+        }    
     }
 
     private void CreateTutIDtoLecIDmap()
@@ -302,11 +318,12 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         {
             return -1;
         }
-
+        
+        /*
         // count number of occurances in not compatible, unwanted, sections, and parent child tutorials
         int a_count = 0;
         int b_count = 0;
-
+        
         // not compatible
         a_count = a.not_compatible_lec.size();
         a_count += a.not_compatible_tut.size();
@@ -318,15 +335,17 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         // unwanted 
         a_count += a.unwanted.size();
         b_count += b.unwanted.size();
-
+        
+        
         // sections
         a_count += env.sections.get(a.section).length;
         b_count += env.sections.get(b.section).length;
 
+        
         // number of child tutorials
         a_count += a.tutorials.length;
         b_count += b.tutorials.length;
-
+        
         // compare
         if(a_count > b_count)
         {
@@ -336,7 +355,7 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         {
             return -1;
         }
-
+        */
         // tie breaker
         if(a.hashCode() > b.hashCode())
         {
@@ -386,6 +405,7 @@ class ConstraintComparator implements Comparator<LecOrTutId>
             return 1;
         }
 
+        /*
         // count number of occurances in not compatible, unwanted, sections, and parent child tutorials
         int a_count = 0;
         int b_count = 0;
@@ -402,15 +422,17 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         a_count += a.unwanted.size();
         b_count += b.unwanted.size();
 
+        
         // sections
         a_count += env.sections.get(a.section).length;
         // get the first parent lectrue, lookup its section 
         b_count += env.sections.get(env.lectures[b.parent_lectures[0]].section).length;
 
+        
         // number of child tutorials
         a_count += a.tutorials.length;
         b_count += b.parent_lectures.length;
-
+        
         // compare
         if(a_count > b_count)
         {
@@ -420,7 +442,7 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         {
             return -1;
         }
-
+        */   
         // tie breaker
         if(a.hashCode() > b.hashCode())
         {
@@ -462,7 +484,8 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         {
             return -1;
         }
-
+        
+        /*
         // count number of occurances in not compatible, unwanted, sections, and parent child tutorials
         int a_count = 0;
         int b_count = 0;
@@ -479,13 +502,16 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         a_count += a.unwanted.size();
         b_count += b.unwanted.size();
 
+        
         // sections
         a_count += env.sections.get(env.lectures[a.parent_lectures[0]].section).length;
         b_count += env.sections.get(env.lectures[b.parent_lectures[0]].section).length;
 
+        
         // number of child tutorials
         a_count += a.parent_lectures.length;
         b_count += b.parent_lectures.length;
+        
 
         // compare
         if(a_count > b_count)
@@ -496,7 +522,7 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         {
             return -1;
         }
-
+        */
         // tie breaker
         if(a.hashCode() > b.hashCode())
         {

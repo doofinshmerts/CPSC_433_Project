@@ -373,7 +373,7 @@ public final class InputParser
         // if exists add partial constraint CPSC 913 to TU 18:00
         // if exists add unwanted for any CPSC 351 to time overlapping 18:00 to 19:00
         // if exists add unwanted for any CPSC 413 to time overlapping 18:00 to 19:00
-
+        
         // Special Constraint: CPSC 851 / CPSC 913 dependencies
         if(lec_tut_data.containsKey("CPSC 351"))
         {
@@ -2154,7 +2154,7 @@ public final class InputParser
             // so set the lecture number to 1 (not important) and use section to true
             tut.lec_num = 1;
             tut.use_section = true;
-            tut.is_evng = true;
+            tut.is_evng = false;
             tut.course_descriptor = elements[0];
         }
 

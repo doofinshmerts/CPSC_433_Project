@@ -20,6 +20,8 @@ public class Tutorial
     HashSet<Integer> unwanted = new HashSet<Integer>();
     // the map used to implement preferences, the preference of slot s with id key, is given by preferences[key]
     HashMap<Integer, Integer> preferences = new HashMap<Integer, Integer>();
+    // the score of the tutorials first choice
+    int first_choice = 0;
 
     String course_descriptor; // e.g. CPSC 433
     int lec_num; // e.g. LEC 01 -> lec_num = 1 (defualt to 0 if not included)

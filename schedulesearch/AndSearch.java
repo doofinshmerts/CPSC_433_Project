@@ -13,6 +13,12 @@ public class AndSearch
     // how often should status be printed
     int status_update_freq = 10000; // once every x iterations
 
+    // the deepest node this update:
+    int max_depth = 0;
+
+    // the number of complete solutions reached
+    int comp_solutions = 0;
+
     // the tree in the form of a priority queue (next leaf to expand on top)
     PriorityQueue<Problem> tree;
 
@@ -25,6 +31,17 @@ public class AndSearch
     {
         env = _env;
         tree = new PriorityQueue<Problem>(10, new FLeafComparator(env));
+        /*
+        int[] valid_slots = Functions.ValidTutSlots(env, 5, _s0);
+        env.tutorials[5].PrintData();
+        if(valid_slots == null)
+        {
+            System.out.println("not solvable");
+            return;
+        }
+
+        System.out.println("number of available slots " + valid_slots.length);
+        */
         tree.add(_s0);
         
     }
@@ -45,6 +62,9 @@ public class AndSearch
      */
     public boolean RunSearch()
     {
+    
+       
+
         // start a timer
         long start_time = System.nanoTime();
         long current_time = start_time;
@@ -59,7 +79,8 @@ public class AndSearch
 
             if(i % status_update_freq == 0)
             {
-                System.out.println(String.format("Elapsed Time: %10.2f, Iterations: %10d, tree size: %10d, Best so far: %10d", elapsed_time, i, tree.size(), env.best_score));
+                System.out.println(String.format("Elapsed Time: %10.2f, Iterations: %10d, tree size: %10d, Best so far: %10d, Deepest: %4d, Complete Solutions: %10d", elapsed_time, i, tree.size(), env.best_score, max_depth, comp_solutions));
+                max_depth = 0;
             }
 
             // time bound
@@ -128,6 +149,7 @@ public class AndSearch
         // check to see if the problem has all lectures and tutorials assigned
         if(top_problem.AllAssigned())
         {
+            comp_solutions++;
             //System.out.println("assigned");
             // try to get this problems score and record it if it is the best
             int score = Functions.Eval(top_problem, env);
@@ -143,6 +165,12 @@ public class AndSearch
             return;
         }
 
+        // record the max depth found
+        if(max_depth < top_problem.depth)
+        {
+            max_depth = top_problem.depth;
+        }
+
         
         // check to see if it is solvable
         
@@ -153,7 +181,7 @@ public class AndSearch
             // so do not put this back into the tree
             return;
         }
-
+        
         // select the next lecture or tutorial based on the constraint rank 
         LecOrTutId selected = Functions.Ftrans(top_problem, env);
 
@@ -240,7 +268,7 @@ class FLeafComparator implements Comparator<Problem>
         {
             return -1;
         }
-        else if((p1.min_score >= env.best_score) && !(p2.min_score >= env.best_score))
+        else if(!(p1.min_score >= env.best_score) && (p2.min_score >= env.best_score))
         {
             return 1;
         }

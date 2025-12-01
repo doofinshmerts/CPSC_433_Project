@@ -96,8 +96,8 @@ public final class Functions
     public static int MinBoundScore(Problem pr, Environment env)
     {
         // EvalPref and EvalSecDiff are permenant scores that cannot be reduced as more assignments are made
-        int sum = EvalPref(pr, env) * env.w_pref;
-        sum += EvalSecDiff(pr, env) * env.w_secdiff;
+        int sum = EvalSecDiff(pr, env) * env.w_secdiff;
+        sum += EvalPref(pr, env) * env.w_pref;
         return sum;
     }
 
@@ -114,6 +114,15 @@ public final class Functions
         sum += EvalPair(pr, env) * env.w_pair;
         sum += EvalSecDiff(pr, env) * env.w_secdiff;
         return sum;
+    }
+
+    public static void PrintEvaluations(Problem pr, Environment env)
+    {
+        System.out.println("Min Filled: " + EvalMinFilled(pr,env));
+        System.out.println("Min Filled: " + EvalPref(pr,env));
+        System.out.println("Min Filled: " + EvalPair(pr,env));
+        System.out.println("Min Filled: " + EvalSecDiff(pr,env));
+
     }
 
     /**
@@ -158,6 +167,9 @@ public final class Functions
         int lecPenalty = 0;
         int tutPenalty = 0;
 
+        // calculation starts by assuming that all problems have been given their ideal pick,
+        // 
+
         // Sum of lecture penalties
         for (int i = 0; i < pr.lectures.length; i++) {
             int slotId = pr.lectures[i];
@@ -165,6 +177,12 @@ public final class Functions
             if (env.lectures[i].preferences.containsKey(slotId)) 
             {
                 lecPenalty += env.lectures[i].preferences.get(slotId);
+            }
+            else
+            {
+                // if slot is not assigned, or this lecture has no preferences, then
+                // assume it got it's first choice, first choice is zero if it has no preferences
+                lecPenalty += env.lectures[i].first_choice;
             }
         }
 
@@ -177,9 +195,16 @@ public final class Functions
             {
                 tutPenalty += env.tutorials[i].preferences.get(slotId);
             }
+            else
+            {
+                // if slot is not assigned, or this tutorial has no preferences, 
+                // then assume it got it's first choice, first choice is zero if it has no preferences
+                tutPenalty += env.tutorials[i].first_choice;
+            }
         }
 
         return (env.total_pref_sum - (lecPenalty + tutPenalty));
+        //return lecPenalty + tutPenalty;
     }
 
     
@@ -280,6 +305,7 @@ public final class Functions
             {
                 // number of unique pairs from n items is n(n-1)/2
                 section_penalty += (val*(val-1)) >> 1;
+                //section_penalty += val-1;
             }
         }
 
