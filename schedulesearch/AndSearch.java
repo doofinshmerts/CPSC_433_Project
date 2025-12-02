@@ -113,6 +113,45 @@ public class AndSearch
         // indicate if a solution has been found or not
         if(env.solution_found)
         {
+            // check every hard constraint
+            if(Functions.SlotCapacityCompliance(env.best_sol, env))
+            {
+                System.out.println("passed slot capacity check");
+            }
+            else
+            {
+                System.out.println("failed slot capacity check");
+            }
+
+            // check every hard constraint
+            if(Functions.LectureNoOverlapTutorials(env.best_sol, env))
+            {
+                System.out.println("passed child tutorials overlap check");
+            }
+            else
+            {
+                System.out.println("failed child tutorials overlap check");
+            }
+
+            // check every hard constraint
+            if(Functions.NotCompatibleCheck(env.best_sol, env))
+            {
+                System.out.println("passed Not compatible check ");
+            }
+            else
+            {
+                System.out.println("failed not compatible check");
+            }
+
+            // check every hard constraint
+            if(Functions.UnwantedCheck(env.best_sol, env))
+            {
+                System.out.println("passed unwanted check");
+            }
+            else
+            {
+                System.out.println("failed unwanted check");
+            }
             return true;
         }
         else

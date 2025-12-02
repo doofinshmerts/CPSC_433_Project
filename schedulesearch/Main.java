@@ -70,6 +70,7 @@ public class Main
             AndSearch search = new AndSearch(env, s0);
             Problem pr = new Problem();
             pr.SetupProblem(10,10,10,10);
+            
             if(search.RunSearch())
             {
                 System.out.println(String.format("\nSolution score: %d, best possible score: %d\n", env.best_score, env.BestPossibleScore()));

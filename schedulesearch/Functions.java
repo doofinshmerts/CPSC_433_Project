@@ -759,6 +759,335 @@ public final class Functions
             }
         }
     } 
+
+
+    // hard constraint compliance
+
+    /**
+     * do the slots meet the hard constraints on capacity and active learning capacity
+     * @param pr the problem to analyze
+     * @param env the environment to analyze
+     */
+    public static boolean SlotCapacityCompliance(Problem pr, Environment env)
+    {
+        // determine the number of assignments to each slot
+        int[] fill_lec_slots = new int[env.lec_slots_array.length];
+        int[] fill_tut_slots = new int[env.tut_slots_array.length];
+        int[] fill_lec_slots_al = new int[env.lec_slots_array.length];
+        int[] fill_tut_slots_al = new int[env.tut_slots_array.length];
+
+        // initialize the arrays
+        for(int i= 0; i < fill_lec_slots.length; i++)
+        {
+            fill_lec_slots[i] = 0;
+            fill_lec_slots_al[i] = 0;
+        }
+
+        for(int i = 0; i < fill_tut_slots.length; i++)
+        {
+            fill_tut_slots[i] = 0;
+            fill_tut_slots_al[i] = 0;
+        }
+
+        for(int i = 0; i < pr.lectures.length; i++)
+        {
+            // slot id
+            int slot_id = pr.lectures[i];
+
+            // add to the count
+            fill_lec_slots[slot_id] += 1;
+            // is this an active learning lecture
+            if(env.lectures[i].is_al)
+            {
+                fill_lec_slots[slot_id] += 1;
+            }
+        }
+
+
+        for(int i = 0; i < pr.tutorials.length; i++)
+        {
+            // slot id
+            int slot_id = pr.tutorials[i];
+
+            // add to the count
+            fill_tut_slots[slot_id] += 1;
+            // is this an active learning lecture
+            if(env.tutorials[i].is_al)
+            {
+                fill_tut_slots[slot_id] += 1;
+            }
+        }
+
+        // verify that they are not over capacity
+        for(int i = 0; i < fill_lec_slots.length; i++)
+        {
+            Slot s = env.lec_slots_array[i];
+            System.out.println(String.format("lec slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_lec_slots[i], fill_lec_slots_al[i]));
+
+            if(s.max < fill_lec_slots[i])
+            {
+                // over flow
+                return false;
+            }
+
+            if(s.almax < fill_lec_slots_al[i])
+            {
+                // active learning over flow
+                return false;
+            }
+        }
+
+
+        for(int i = 0; i < fill_tut_slots.length; i++)
+        {
+            Slot s = env.tut_slots_array[i];
+            System.out.println(String.format("tut slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_tut_slots[i], fill_tut_slots_al[i]));
+
+            if(s.max < fill_tut_slots[i])
+            {
+                // over flow
+                return false;
+            }
+
+            if(s.almax < fill_tut_slots_al[i])
+            {
+                // active learning over flow
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * check if the lectures do not overlap any of their tutorials
+     * @param pr the problem to analyze
+     * @param env the environment to analyze
+     */
+    public static boolean LectureNoOverlapTutorials(Problem pr, Environment env)
+    {
+        // go through every lecture and see if any of its tutorials have overlapping times
+        for(int i = 0; i < pr.lectures.length; i++)
+        {
+            // get the current lecture
+            Lecture lec = env.lectures[i];
+
+            // the slot that the lecture is assigned
+            Slot lec_slot = env.lec_slots_array[pr.lectures[i]];
+
+            // for each child tutorial check its assignment
+            for(int j = 0; j < lec.tutorials.length; j++)
+            {
+                // get the assigned slot of this tutorial (look up the tutorial id using j, then look up the slot id using the tutorial id)
+                Slot tut_slot = env.tut_slots_array[pr.tutorials[lec.tutorials[j]]];
+
+                if(AreLecTutSlotsOverlapping(lec_slot, tut_slot))
+                {
+                    lec.PrintData();
+                    lec_slot.PrintSlot();
+                    System.out.println("above lecture overlaps with tutorial: " + env.tutorials[lec.tutorials[j]].name);
+                    tut_slot.PrintSlot();
+                    // overlap found, return false
+                    return false;
+                }
+            }
+        }
+
+        // no overlaps found return true
+        return true;
+    }
+
+
+    /**
+     * are a lecture and tutorial slot overlapping
+     * @param lec_slot the lecture slot
+     * @param tut_slot the tutorial slot
+     */
+    private static boolean AreLecTutSlotsOverlapping(Slot lec_slot, Slot tut_slot)
+    {
+        // cases are the days Monday, Tuesday, Friday
+        if((tut_slot.day == 0) || (tut_slot.day == 2))
+        {
+            // monday
+            // moday case lecture and tutorial slots a one hour long
+            if(lec_slot.lec_hash == tut_slot.lec_hash)
+            {
+                return true;
+            }
+        }
+        else if((tut_slot.day == 1) || (tut_slot.day == 3))
+        {
+            // tuesday lecture slots are 90 min, tutorial slots are 60 min
+            if(((lec_slot.lec_hash + 90) > tut_slot.lec_hash) && ( (lec_slot.lec_hash + 90) <= (tut_slot.lec_hash + 50)) )
+            {
+                // lecture ends in the middle of a tutorial, thus overlapping
+                return true;
+            }
+
+            if(((tut_slot.lec_hash + 60) >(lec_slot.lec_hash)) && ((tut_slot.lec_hash + 60) <= (lec_slot.lec_hash + 90)))
+            {
+                // tutorial end in the middle of a lecture, thus overlapping
+                return true;
+            }
+        }
+        else
+        {
+            // TGIF
+            // tuesday friday lecture slots are 60 min, tutorial slots are 120 min
+            if(((lec_slot.lec_hash + 60) > tut_slot.lec_hash) && ( (lec_slot.lec_hash + 60) <= (tut_slot.lec_hash + 120)) )
+            {
+                // lecture ends in the middle of a tutorial, thus overlapping
+                return true;
+            }
+
+            if(((tut_slot.lec_hash + 120) >(lec_slot.lec_hash)) && ((tut_slot.lec_hash + 120) <= (lec_slot.lec_hash + 60)))
+            {
+                // tutorial end in the middle of a lecture, thus overlapping
+                return true;
+            }
+
+        }
+
+        return false;
+    }
+
+    /**
+     * check that there are no incompatible lectures/tutorials assigned to the same slots
+     * @param pr the problem to check
+     * @param env the environment to use
+     */
+    public static boolean NotCompatibleCheck(Problem pr, Environment env)
+    {
+        // go through every lecture and check that it does not overlap a not compatible lecture/tutorial
+        for(int i = 0; i < pr.lectures.length; i++)
+        {
+            // get the current lecture
+            Lecture lec = env.lectures[i];
+
+            // the slot that the lecture is assigned
+            Slot lec_slot = env.lec_slots_array[pr.lectures[i]];
+
+            // for each not compatible lecture
+            for(Integer l: lec.not_compatible_lec)
+            {
+                // get the assigned slot of this lecture
+                int l_slot = pr.lectures[l];
+
+                if(lec_slot.id == l_slot)
+                {
+                    // overlap found, return false
+                    return false;
+                }
+            }
+
+            // for each not compatible tutorial
+            for(Integer t: lec.not_compatible_tut)
+            {
+                // get the assigned slot
+                Slot s = env.tut_slots_array[pr.tutorials[t]];
+
+                if(AreLecTutSlotsOverlapping(lec_slot, s))
+                {
+                    // overlap found, return false
+                    return false;
+                }
+            }
+        }
+
+        // go through every tutorial and check that it does not overlap a not compatible tutorial/lecture
+        for(int i = 0; i < pr.tutorials.length; i++)
+        {
+            // get the current tutorial
+            Tutorial tut = env.tutorials[i];
+
+            // the slot that the tutorial is assigned
+            Slot tut_slot = env.tut_slots_array[pr.tutorials[i]];
+
+            // for each not compatible lecture
+            for(Integer l: tut.not_compatible_lec)
+            {
+                // get the assigned slot of this lecture
+                Slot l_slot = env.lec_slots_array[pr.lectures[l]];
+
+                if(AreLecTutSlotsOverlapping(l_slot, tut_slot))
+                {
+                    // overlap found, return false
+                    return false;
+                }
+            }
+
+            // for each not compatible tutorial
+            for(Integer t: tut.not_compatible_tut)
+            {
+                // get the assigned slot
+                int s = pr.tutorials[t];
+
+                if(tut_slot.id == s)
+                {
+                    // overlap found, return false
+                    return false;
+                }
+            }
+        }
+
+
+        // not conflicts found return true
+        return true;
+    }
+
+    /**
+     * check that there are no lectures/tutorials assigned to unwanted slots
+     * @param pr the problem to check
+     * @param env the environment to use
+     */
+    public static boolean UnwantedCheck(Problem pr, Environment env)
+    {
+        // go through every lecture and check that it is not assigned an unwanted slot
+        for(int i = 0; i < pr.lectures.length; i++)
+        {
+            // get the current lecture
+            Lecture lec = env.lectures[i];
+
+            // the slot that the lecture is assigned
+            int lec_slot = pr.lectures[i];
+
+            // for each unwanted, ensure it is not the assigned slot
+            for(Integer unwanted: lec.unwanted)
+            {
+                if(unwanted == lec_slot)
+                {
+                    // overlap found, return false
+                    return false;
+                }
+            }
+        }
+
+
+        // go through every lecture and check that it is not assigned an unwanted slot
+        for(int i = 0; i < pr.tutorials.length; i++)
+        {
+            // get the current lecture
+            Tutorial tut = env.tutorials[i];
+
+            // the slot that the lecture is assigned
+            int tut_slot = pr.tutorials[i];
+
+            // for each unwanted, ensure it is not the assigned slot
+            for(Integer unwanted: tut.unwanted)
+            {
+                if(unwanted == tut_slot)
+                {
+                    // overlap found, return false
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+
+
 }
 
 class LectureSorter implements Comparator<LectureFormat>

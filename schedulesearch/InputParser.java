@@ -788,6 +788,11 @@ public final class InputParser
             System.out.println(String.format("index: %d id: %d", i, env.tutorials[i].id));
         }
 
+        for(int i =0; i < env.lec_slots_array.length; i++)
+        {
+            System.out.println(String.format("index: %d id: %d", i, env.lec_slots_array[i].id));
+        }
+
         System.out.println(String.format("\nPreference sum: %d", env.total_pref_sum));
 
         System.out.println("\n equivalent lectrue slots\n");
