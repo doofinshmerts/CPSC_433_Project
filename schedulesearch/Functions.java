@@ -56,6 +56,65 @@ public final class Functions
     }
 
     /**
+     * Pick the next lecture or tutorial to expand on based on which has the least number of slots
+     * 
+     * @param pr The problem find a transition for
+     * @param env The environment the problem is in
+     * @param slots The ids of the slots to assign to the selected lecture/tutorial
+     * @param selected The id of the lecture or tutorial to assign the slots to
+     * @return True if this solution can be satisfied, false if this problem cannot be satisfied (at least one lecture/tutorial has no available slots)
+     */
+    public static boolean Ftrans(Problem pr, Environment env, int[] slots, LecOrTutId selected)
+    {
+        int min_so_far = 2000000; // big enough
+
+        // iterate through all lecs in pr
+        for (int i = 0; i < pr.lectures.length; i++) {
+            // if a lec assignment is null, check if it has any valid slot assignments
+            if (pr.lectures[i] == -1) 
+            {
+                int[] validLecs = ValidLectureSlots(env, i, pr);
+                if(validLecs == null)
+                {
+                    // solution cannot be satisfied
+                    return false;
+                }
+                else if(validLecs.length < min_so_far)
+                {
+                    // if this is the least number so far then record its slots and id
+                    min_so_far = validLecs.length;
+                    slots = validLecs;
+                    selected.is_lec = true;
+                    selected.id = i;
+                }
+            }
+        }
+
+        // iterate through all tutorials in pr
+        for (int i = 0; i < pr.tutorials.length; i++) {
+            // if a tut assignment is null, check if it has any valid assignments
+            if (pr.tutorials[i] == -1) 
+            {
+                int[] validTuts = ValidTutSlots(env, i, pr);
+                if (validTuts == null) 
+                {
+                    // solution cannot be satisfied
+                    return true;
+                }
+                else if(validTuts.length < min_so_far)
+                {
+                    // if this is the least number so far then record its slots and id
+                    min_so_far = validTuts.length;
+                    slots = validTuts;
+                    selected.is_lec = false;
+                    selected.id = i;
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
      * Fbound determines if the leaf represented by this problem can be pruned from the search tree
      * It does this by determining if there is no possible way for this problem to achive a better score than the one that has already been found
      * @param pr the problem to check
@@ -116,13 +175,15 @@ public final class Functions
         return sum;
     }
 
+    /**
+     * Print the components of the score
+     */
     public static void PrintEvaluations(Problem pr, Environment env)
     {
         System.out.println("Min Filled: " + EvalMinFilled(pr,env));
-        System.out.println("Min Filled: " + EvalPref(pr,env));
-        System.out.println("Min Filled: " + EvalPair(pr,env));
-        System.out.println("Min Filled: " + EvalSecDiff(pr,env));
-
+        System.out.println("Pref: " + EvalPref(pr,env));
+        System.out.println("Pair: " + EvalPair(pr,env));
+        System.out.println("Sec: " + EvalSecDiff(pr,env));
     }
 
     /**
@@ -316,7 +377,7 @@ public final class Functions
      * Ftrans selects the next lecture or tutorial based on the constraint rank 
      * 
      */
-    public static LecOrTutId Ftrans(Problem pr, Environment env)
+    public static LecOrTutId SelectLecTut(Problem pr, Environment env)
     {
         // iterate through the sorted array of lectures and tutorials until we find one that has not yet been assigned
         for(int i = (pr.last_selection+1); i < env.constraint_ordering.length; i++)

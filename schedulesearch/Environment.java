@@ -9,6 +9,10 @@ import java.util.Collections;
  */ 
 public class Environment
 {
+    // For the constraint ranking
+    int w_al = 1000000;
+    int w_evng = 100000;
+    int w_5xx = 10000;
 
     // INPUT SCALARS ################################################################################
     // the weights used in the score calculations
@@ -120,6 +124,29 @@ public class Environment
         CreateTutIDtoLecIDmap();
     }
 
+    /**
+     * calculate the best score that can possibly be achived
+     */
+    public int BestPossibleScore()
+    {
+        int max = total_pref_sum;
+        // total preference sum - best preferences
+        for(int i = 0; i < lectures.length; i++)
+        {
+            max -= lectures[i].first_choice;
+        }
+
+        for(int i = 0; i < tutorials.length; i++)
+        {
+            max -= tutorials[i].first_choice;
+        }
+
+        return max;
+    }
+
+    /**
+     * create a list of lecture/tutorial ids ordered by their constraint rank
+     */
     private void CreateConstraintRankList()
     {
         // array for storing the ids of all lectures and tutorials
@@ -131,6 +158,8 @@ public class Environment
             LecOrTutId temp = new LecOrTutId();
             temp.is_lec = true;
             temp.id = lectures[i].id; // id and i should be the same
+            // calculate the rank of this lecture
+            temp.rank_value = CalculateLectureRank(lectures[i]); 
             lectures_tutorials.add(temp);
         }
 
@@ -140,11 +169,14 @@ public class Environment
             LecOrTutId temp = new LecOrTutId();
             temp.is_lec = false;
             temp.id = tutorials[i].id;
+
+            // calculate the rank of this tutorial
+            temp.rank_value = CalculateTutorialRank(tutorials[i]);
             lectures_tutorials.add(temp);
         }
 
         // quick!!! sort the list
-        Collections.sort(lectures_tutorials, new ConstraintComparator(this));
+        Collections.sort(lectures_tutorials, new ConstraintComparator());
 
         // now put the sorted list into the environments array
         constraint_ordering = new LecOrTutId[num_lectures + num_tutorials];
@@ -154,6 +186,74 @@ public class Environment
         {
             constraint_ordering[i] = lectures_tutorials.get(i);
         }
+    }
+
+    /**
+     * calculate the rank value of a lecture
+     */
+    private int CalculateLectureRank(Lecture lec)
+    {
+        // sum the values of things that contribute to the constraint rank of the lecture
+        int value = 0;
+        // check for evening
+        if(lec.is_evng)
+        {
+            value += w_evng;
+        }
+
+        // check for active learning
+        if(lec.is_al)
+        {
+            value += w_al;
+        }
+
+        // check for 5xx level course
+        if(lec.is_5xx)
+        {
+            value += w_5xx;
+        }
+        
+        // count number of occurances in not compatible, unwanted, sections, and parent child tutorials
+        // not compatible
+        value += lec.not_compatible_tut.size();
+        // unwanted
+        value += lec.unwanted.size();
+        // sections
+        value += sections.get(lec.section).length;
+        // number of child tutorials
+        value += lec.tutorials.length;
+
+        return value;
+    }
+
+    /**
+     * calculate the rank value of a tutorial
+     */
+    private int CalculateTutorialRank(Tutorial tut)
+    {
+        // sum the values of things that contribute to the constraint rank of the lecture
+        int value = 0;
+        // check for evening
+        if(tut.is_evng)
+        {
+            value += w_evng;
+        }
+
+        // check for active learning
+        if(tut.is_al)
+        {
+            value += w_al;
+        }
+        
+        // count number of occurances in not compatible, unwanted, and parent lectures
+        // not compatible
+        value += tut.not_compatible_tut.size();
+        // unwanted
+        value += tut.unwanted.size();
+        // number of child tutorials
+        value += tut.parent_lectures.length;
+
+        return value;
     }
 
     private void SumPreferences()
@@ -220,17 +320,6 @@ public class Environment
  */
 class ConstraintComparator implements Comparator<LecOrTutId>
 {
-    // need environment information to perform the sort
-    Environment env;
-
-    /**
-     * constructor for the comparator
-     * @param _env give the comparator the environment data 
-     */
-    public ConstraintComparator(Environment _env)
-    {
-        env = _env;
-    }
     /**
      * implements the sorting function for comparator
      * @param a the first object to be compared.
@@ -245,292 +334,34 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         // 3. 5xx level lectures are ranked first, tie break on ordering
         // 4. number of occurances in notCompatible, Unwanted, Sections, and parent lectures/ child tutorails
         
-        if(a.is_lec && b.is_lec)
+        // sort based on rank
+        if(b.rank_value > a.rank_value)
         {
-            // lecture v lecture
-            Lecture lec_a = env.lectures[a.id];
-            Lecture lec_b = env.lectures[b.id];
-            return LecVLec(lec_a, lec_b);
+            return -1;
         }
-        else if(a.is_lec && !b.is_lec)
+        else if(b.rank_value < a.rank_value)
         {
-            // lecture v tutorial
-            Lecture lec_a = env.lectures[a.id];
-            Tutorial tut_b = env.tutorials[b.id];
-            return LecVTut(lec_a, tut_b);
+            return 1;
         }
-        else if(!a.is_lec && b.is_lec)
+        
+        // if same rank, then lectures first
+        if(b.is_lec && !a.is_lec)
         {
-            // lecture v tutorial
-            Lecture lec_b = env.lectures[b.id];
-            Tutorial tut_a = env.tutorials[a.id];
-            return (-1 * LecVTut(lec_b, tut_a));
+            return -1;
+        }
+        else if(!b.is_lec && a.is_lec)
+        {
+            return 1;
+        }
 
+        // if same rank and same type, then they will have different id
+        if(b.id > a.id)
+        {
+            return -1;
         }
         else
         {
-            // tutorial v tutorial
-            Tutorial tut_a = env.tutorials[a.id];
-            Tutorial tut_b = env.tutorials[b.id];
-            return TutVTut(tut_a, tut_b);
-        }
-    }
-
-    /**
-     * implement the compare constraint rank based on two lectures
-     * @param a first lecture
-     * @param b second lecture
-     */
-    private int LecVLec(Lecture a, Lecture b)
-    {
-        // sort by the following priorities
-        // 1. evening lectures/tutorials are ranked first, tie break on ordering
-        // 2. active learning lectures/tutorials are ranked first, tie break on ordering
-        // 3. 5xx level lectures are ranked first, tie break on ordering
-        // 4. number of occurances in notCompatible, Unwanted, Sections, and parent lectures/ child tutorails
-        
-        // check for evening
-        if(a.is_evng && !b.is_evng)
-        {
             return 1;
-        }
-        else if(!a.is_evng && b.is_evng)
-        {
-            return -1;
-        }
-
-        // check for active learning
-        if(a.is_al && !b.is_al)
-        {
-            return 1;
-        }
-        else if(!a.is_al && b.is_al)
-        {
-            return -1;
-        }
-
-        // check for 5xx level lectures (this will be different for tutorials
-        if(a.is_5xx && !b.is_5xx)
-        {
-            return 1;
-        }
-        else if(!a.is_5xx && b.is_5xx)
-        {
-            return -1;
-        }
-        
-        /*
-        // count number of occurances in not compatible, unwanted, sections, and parent child tutorials
-        int a_count = 0;
-        int b_count = 0;
-        
-        // not compatible
-        a_count = a.not_compatible_lec.size();
-        a_count += a.not_compatible_tut.size();
-
-        b_count = b.not_compatible_lec.size();
-        b_count += b.not_compatible_tut.size();
-
-
-        // unwanted 
-        a_count += a.unwanted.size();
-        b_count += b.unwanted.size();
-        
-        
-        // sections
-        a_count += env.sections.get(a.section).length;
-        b_count += env.sections.get(b.section).length;
-
-        
-        // number of child tutorials
-        a_count += a.tutorials.length;
-        b_count += b.tutorials.length;
-        
-        // compare
-        if(a_count > b_count)
-        {
-            return 1;
-        }
-        else if(b_count < a_count)
-        {
-            return -1;
-        }
-        */
-        // tie breaker
-        if(a.hashCode() > b.hashCode())
-        {
-            return 1;
-        }
-        else
-        {
-            return -1;
-        }
-
-    }
-
-    /**
-     * implement the compare constraint rank based on a lecture and a tutorial
-     */
-    private int LecVTut(Lecture a, Tutorial b)
-    {
-        // sort by the following priorities
-        // 1. evening lectures/tutorials are ranked first, tie break on ordering
-        // 2. active learning lectures/tutorials are ranked first, tie break on ordering
-        // 3. 5xx level lectures are ranked first, tie break on ordering
-        // 4. number of occurances in notCompatible, Unwanted, Sections, and parent lectures/ child tutorails
-        
-        // check for evening
-        if(a.is_evng && !b.is_evng)
-        {
-            return 1;
-        }
-        else if(!a.is_evng && b.is_evng)
-        {
-            return -1;
-        }
-
-        // check for active learning
-        if(a.is_al && !b.is_al)
-        {
-            return 1;
-        }
-        else if(!a.is_al && b.is_al)
-        {
-            return -1;
-        }
-
-        // check for 5xx level lecture
-        if(a.is_5xx)
-        {
-            return 1;
-        }
-
-        /*
-        // count number of occurances in not compatible, unwanted, sections, and parent child tutorials
-        int a_count = 0;
-        int b_count = 0;
-
-        // not compatible
-        a_count = a.not_compatible_lec.size();
-        a_count += a.not_compatible_tut.size();
-
-        b_count = b.not_compatible_lec.size();
-        b_count += b.not_compatible_tut.size();
-
-
-        // unwanted 
-        a_count += a.unwanted.size();
-        b_count += b.unwanted.size();
-
-        
-        // sections
-        a_count += env.sections.get(a.section).length;
-        // get the first parent lectrue, lookup its section 
-        b_count += env.sections.get(env.lectures[b.parent_lectures[0]].section).length;
-
-        
-        // number of child tutorials
-        a_count += a.tutorials.length;
-        b_count += b.parent_lectures.length;
-        
-        // compare
-        if(a_count > b_count)
-        {
-            return 1;
-        }
-        else if(b_count < a_count)
-        {
-            return -1;
-        }
-        */   
-        // tie breaker
-        if(a.hashCode() > b.hashCode())
-        {
-            return 1;
-        }
-        else
-        {
-            return -1;
-        }
-    }
-
-    /**
-     * implement the compare constraint rank based on two tutorials
-     */
-    private int TutVTut(Tutorial a, Tutorial b)
-    {
-        // sort by the following priorities
-        // 1. evening lectures/tutorials are ranked first, tie break on ordering
-        // 2. active learning lectures/tutorials are ranked first, tie break on ordering
-        // 3. 5xx level lectures are ranked first, tie break on ordering
-        // 4. number of occurances in notCompatible, Unwanted, Sections, and parent lectures/ child tutorails
-        
-        // check for evening
-        if(a.is_evng && !b.is_evng)
-        {
-            return 1;
-        }
-        else if(!a.is_evng && b.is_evng)
-        {
-            return -1;
-        }
-
-        // check for active learning
-        if(a.is_al && !b.is_al)
-        {
-            return 1;
-        }
-        else if(!a.is_al && b.is_al)
-        {
-            return -1;
-        }
-        
-        /*
-        // count number of occurances in not compatible, unwanted, sections, and parent child tutorials
-        int a_count = 0;
-        int b_count = 0;
-
-        // not compatible
-        a_count = a.not_compatible_lec.size();
-        a_count += a.not_compatible_tut.size();
-
-        b_count = b.not_compatible_lec.size();
-        b_count += b.not_compatible_tut.size();
-
-
-        // unwanted 
-        a_count += a.unwanted.size();
-        b_count += b.unwanted.size();
-
-        
-        // sections
-        a_count += env.sections.get(env.lectures[a.parent_lectures[0]].section).length;
-        b_count += env.sections.get(env.lectures[b.parent_lectures[0]].section).length;
-
-        
-        // number of child tutorials
-        a_count += a.parent_lectures.length;
-        b_count += b.parent_lectures.length;
-        
-
-        // compare
-        if(a_count > b_count)
-        {
-            return 1;
-        }
-        else if(b_count < a_count)
-        {
-            return -1;
-        }
-        */
-        // tie breaker
-        if(a.hashCode() > b.hashCode())
-        {
-            return 1;
-        }
-        else
-        {
-            return -1;
         }
     }
 }
@@ -544,5 +375,7 @@ class LecOrTutId
     boolean is_lec = false;
     // the id of the lecture or tutorial
     int id = -1;
+    // the value representing the constraint rank
+    int rank_value = 0;
 }
 

@@ -182,8 +182,7 @@ public class AndSearch
             return;
         }
         
-        // select the next lecture or tutorial based on the constraint rank 
-        LecOrTutId selected = Functions.Ftrans(top_problem, env);
+        LecOrTutId selected = Functions.SelectLecTut(top_problem, env);
 
         // determine if lecture or tutorial
         if(selected.is_lec)

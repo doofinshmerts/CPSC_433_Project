@@ -24,6 +24,7 @@ public class Lecture
     HashMap<Integer, Integer> preferences = new HashMap<Integer, Integer>();
     // the score of the lectures first choice
     int first_choice = 0;
+    
     String course_descriptor; // e.g. CPSC 433
     int lec_num; // the lecture number
     String name; // the full name of the lecture

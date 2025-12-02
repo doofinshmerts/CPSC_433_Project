@@ -72,7 +72,8 @@ public class Main
             pr.SetupProblem(10,10,10,10);
             if(search.RunSearch())
             {
-                System.out.println(String.format("\nSolution score: %d\n", env.best_score));
+                System.out.println(String.format("\nSolution score: %d, best possible score: %d\n", env.best_score, env.BestPossibleScore()));
+                Functions.PrintEvaluations(env.best_sol, env);
                 Functions.PrintProblem(env.best_sol,env);
             }
             else
