@@ -440,6 +440,12 @@ public final class Functions
         // this hashset will store the indices of all the slots that are not valid
         HashSet<Integer> slot_mask = new HashSet<Integer>();
 
+        // if we need to remove the tuesday at 11:00 lecture slot then add it to the filter of every lecture
+        if(env.remove_tue_11_slot)
+        {
+            slot_mask.add(env.tue_11_slot_id);
+        }
+
         // Find over capacity slots ####################################################################################################################
         // if the slot is at capacity then add it to the mask
         for(int i = 0; i < pr.lec_slot_fill.length; i++)
@@ -710,53 +716,53 @@ public final class Functions
     public static void PrintProblem(Problem pr, Environment env)
     {
         // create an array for holding the data
-        ArrayList<LectureFormat> output = new ArrayList<LectureFormat>();
+        ArrayList<OutputFormat> output = new ArrayList<OutputFormat>();
 
-        // parse through the problem to get the assignments
+        // parse through the lectures of the problem and get the lecture names and slot assignments
         for(int i = 0; i < env.num_lectures; i++)
         {
-            LectureFormat temp_lec = new LectureFormat();
+            OutputFormat lec_out = new OutputFormat();
+
             // get the slot string
             if(pr.lectures[i] == -1)
             {
                 continue;
             }
-            temp_lec.slot = env.lec_slots_array[pr.lectures[i]].name;
-            // get the lecture string
-            temp_lec.lecture = env.lectures[i].name;
-            // get all the tutorials associated with this lecture
-            for(int j = 0; j < env.lectures[i].tutorials.length; j++)
-            {
-                TutorialFormat temp_tut = new TutorialFormat();
-                int tut_id = env.lectures[i].tutorials[j];
-                // get the tutorial name
-                temp_tut.tutorial = env.tutorials[tut_id].name;
-                if(pr.tutorials[tut_id] != -1)
-                {
-                    // get the slot name
-                    temp_tut.slot = env.tut_slots_array[pr.tutorials[tut_id]].name;
-                }
-
-                temp_lec.tutorials.add(temp_tut);
-            }
-
-            Collections.sort(temp_lec.tutorials, new TutorialSorter());
-
-            output.add(temp_lec);
+            
+            // get the name of the slot
+            lec_out.slot_name = env.lec_slots_array[pr.lectures[i]].name;
+            // get the name of the lecture
+            lec_out.name = env.lectures[i].name;
+            // add this to the output array
+            output.add(lec_out);
         }
 
-        Collections.sort(output, new LectureSorter());
+        // parse through the tutorials of the problem and get the tutorial names and slot assignments
+        for(int i = 0; i < env.num_tutorials; i++)
+        {
+            OutputFormat tut_out = new OutputFormat();
+
+            // get the slot string
+            if(pr.tutorials[i] == -1)
+            {
+                continue;
+            }
+            
+            // get the name of the slot
+            tut_out.slot_name = env.tut_slots_array[pr.tutorials[i]].name;
+            // get the name of the lecture
+            tut_out.name = env.tutorials[i].name;
+            // add this to the output array
+            output.add(tut_out);
+        }
+    
+        // sort the output
+        Collections.sort(output, new LecTutSorter());
 
         for(int i = 0; i < output.size(); i++)
         {
-            String temp = String.format("%-23s: %s", output.get(i).lecture,output.get(i).slot);
+            String temp = String.format("%-23s: %s", output.get(i).name,output.get(i).slot_name);
             System.out.println(temp);
-
-            for(int j =0; j < output.get(i).tutorials.size(); j++)
-            {
-                temp = String.format("%-23s: %s", output.get(i).tutorials.get(j).tutorial,output.get(i).tutorials.get(j).slot);
-                System.out.println(temp);
-            }
         }
     } 
 
@@ -799,7 +805,7 @@ public final class Functions
             // is this an active learning lecture
             if(env.lectures[i].is_al)
             {
-                fill_lec_slots[slot_id] += 1;
+                fill_lec_slots_al[slot_id] += 1;
             }
         }
 
@@ -814,7 +820,7 @@ public final class Functions
             // is this an active learning lecture
             if(env.tutorials[i].is_al)
             {
-                fill_tut_slots[slot_id] += 1;
+                fill_tut_slots_al[slot_id] += 1;
             }
         }
 
@@ -822,16 +828,18 @@ public final class Functions
         for(int i = 0; i < fill_lec_slots.length; i++)
         {
             Slot s = env.lec_slots_array[i];
-            System.out.println(String.format("lec slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_lec_slots[i], fill_lec_slots_al[i]));
+            
 
             if(s.max < fill_lec_slots[i])
             {
+                System.out.println(String.format("lec slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_lec_slots[i], fill_lec_slots_al[i]));
                 // over flow
                 return false;
             }
 
             if(s.almax < fill_lec_slots_al[i])
             {
+                System.out.println(String.format("lec slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_lec_slots[i], fill_lec_slots_al[i]));
                 // active learning over flow
                 return false;
             }
@@ -841,16 +849,18 @@ public final class Functions
         for(int i = 0; i < fill_tut_slots.length; i++)
         {
             Slot s = env.tut_slots_array[i];
-            System.out.println(String.format("tut slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_tut_slots[i], fill_tut_slots_al[i]));
+            
 
             if(s.max < fill_tut_slots[i])
             {
+                System.out.println(String.format("tut slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_tut_slots[i], fill_tut_slots_al[i]));
                 // over flow
                 return false;
             }
 
             if(s.almax < fill_tut_slots_al[i])
             {
+                System.out.println(String.format("tut slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_tut_slots[i], fill_tut_slots_al[i]));
                 // active learning over flow
                 return false;
             }
@@ -1090,7 +1100,7 @@ public final class Functions
 
 }
 
-class LectureSorter implements Comparator<LectureFormat>
+class LecTutSorter implements Comparator<OutputFormat>
 {
     /**
      * implements the sorting function for comparator
@@ -1098,48 +1108,20 @@ class LectureSorter implements Comparator<LectureFormat>
      * @param b the second object to be compared.
      * @return : 1 if a should appear above b, 0 if they are equal, -1 otherwise
      */
-    public int compare(LectureFormat a, LectureFormat b)
+    public int compare(OutputFormat a, OutputFormat b)
     {
         // sort on the name 
-        return a.lecture.compareTo(b.lecture);
-    }
-}
-
-class TutorialSorter implements Comparator<TutorialFormat>
-{
-    /**
-     * implements the sorting function for comparator
-     * @param a the first object to be compared.
-     * @param b the second object to be compared.
-     * @return : 1 if a should appear above b, 0 if they are equal, -1 otherwise
-     */
-    public int compare(TutorialFormat a, TutorialFormat b)
-    {
-        // sort on the name 
-        return a.tutorial.compareTo(b.tutorial);
+        return a.name.compareTo(b.name);
     }
 }
 
 /**
  * for holding the information needed to print out the assignments
  */
-class LectureFormat
+class OutputFormat
 {
-    // the array of tutorials associated with this lecture
-    ArrayList<TutorialFormat> tutorials = new ArrayList<TutorialFormat>();
-    // the name of the lecture
-    String lecture = "";
-    // the name of the slot
-    String slot = "";
-}
-
-/**
- * for holding the information needed to print out the assignments
- */
-class TutorialFormat
-{
-    // the name of this tutorial
-    String tutorial = "";
+    // the name of this lecture or Tutorial
+    String name = "";
     // the name of this slot
-    String slot = "";
+    String slot_name = "";
 }

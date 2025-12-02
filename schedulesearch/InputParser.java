@@ -13,6 +13,8 @@ import java.util.ArrayList;
  */
 public final class InputParser
 {
+
+    
     // the names of input variables
     private static final String[] HEADINGS = {"Name:", "Lecture slots:", "Tutorial slots:", "Lectures:", "Tutorials:", "Not compatible:", "Unwanted:", "Preferences:", "Pair:", "Partial assignments:"};
     /**
@@ -86,6 +88,12 @@ public final class InputParser
         int k = 0;
         for(Slot slot: env.lecture_slots.values())
         {
+            // check to see if this is the tuesday at 11 slot
+            if(slot.lec_hash == 2100)
+            {
+                System.out.println("INPUT NOTICE: (ParseInputFile, parseLectureSlots) marking tuesday 11:00 am lecture as found and recording its id in environment"); 
+                env.tue_11_slot_id = k;
+            }
             env.lec_slots_array[k] = slot;
             slot.id = k; // who designed this 
             k++;
@@ -364,12 +372,11 @@ public final class InputParser
 
         // environment must be setup inorder to work
         env.SetupEnvironment();
-        // Print the results of the parse 
-        PrintParseResults(env, part_assign_lec, part_assign_tut);
+        
 
         // Add the special constraints #########################################################################################################################################
         // remove any lecture slots that overlap tuesdays at 11:00 to 12:30
-        // if exists add partial constraint CPSC 851 to TU 18:00
+        // if exists add partial constraint CPSC 851 TUT 01 to TU 18:00
         // if exists add partial constraint CPSC 913 to TU 18:00
         // if exists add unwanted for any CPSC 351 to time overlapping 18:00 to 19:00
         // if exists add unwanted for any CPSC 413 to time overlapping 18:00 to 19:00
@@ -377,11 +384,14 @@ public final class InputParser
         // Special Constraint: CPSC 851 / CPSC 913 dependencies
         if(lec_tut_data.containsKey("CPSC 351"))
         {
+            System.out.println("INPUT NOTICE: (ParseInputFile) CPSC 351 found, apply special constraints to CPSC 851 TUT 01 if found"); 
             // Find CPSC 851 TUT
             int targetTutId = -1;
             for(Tutorial t : env.tutorials) {
-                if(t.course_descriptor.equals("CPSC 851") && t.lec_num == 1 && t.tut_num == 1) {
+                // universal tutorials have the lecture number 0 to indicate this
+                if(t.course_descriptor.equals("CPSC 851") && t.lec_num == 0 && t.tut_num == 1) {
                     targetTutId = t.id;
+                    System.out.println("INPUT NOTICE: (ParseInputFile) CPSC 851 TUT 01 found");
                     break;
                 }
             }
@@ -422,10 +432,12 @@ public final class InputParser
         // If CPSC 413 exists -> Schedule CPSC 913 TUT at TU 18:00
         if(lec_tut_data.containsKey("CPSC 413"))
         {
+            System.out.println("INPUT NOTICE: (ParseInputFile) CPSC 413 found, apply special constraints to CPSC 913 TUT 01 if found"); 
             // Find CPSC 913 TUT
             int targetTutId = -1;
             for(Tutorial t : env.tutorials) {
-                if(t.course_descriptor.equals("CPSC 913") && t.lec_num == 1 && t.tut_num == 1) {
+                if(t.course_descriptor.equals("CPSC 913") && t.lec_num == 0 && t.tut_num == 1) {
+                    System.out.println("INPUT NOTICE: (ParseInputFile) CPSC 913 TUT 01 found");
                     targetTutId = t.id;
                     break;
                 }
@@ -463,6 +475,9 @@ public final class InputParser
                 }
             }
         }
+
+        // Print the results of the parse 
+        PrintParseResults(env, part_assign_lec, part_assign_tut);
         
         // apply the partial assignments to the starting state #################################################################################################################
         
@@ -2514,7 +2529,9 @@ public final class InputParser
             Slot temp_slot = new Slot();
             if(TryGetSlotFromLine(nextLine, temp_slot))
             {
+
                 lecture_slots.put(temp_slot.lec_hash,temp_slot);
+            
             }
             else
             {

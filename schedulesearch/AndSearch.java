@@ -11,7 +11,7 @@ public class AndSearch
     Environment env;
 
     // how often should status be printed
-    int status_update_freq = 10000; // once every x iterations
+    int status_update_freq = 1; // once every x iterations
 
     // the deepest node this update:
     int max_depth = 0;

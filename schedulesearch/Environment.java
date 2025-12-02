@@ -14,6 +14,8 @@ public class Environment
     int w_evng = 100000;
     int w_5xx = 10000;
 
+    final boolean remove_tue_11_slot = true; // if true we remove the tuesday at 11:00 - 12:30 lecture slot if it is found
+
     // INPUT SCALARS ################################################################################
     // the weights used in the score calculations
     int w_minfilled;
@@ -82,6 +84,9 @@ public class Environment
 
     // this is the total preference value, the preference score of a selected slot is simply removed from this sum
     int total_pref_sum = 0;
+
+    // this is the slot id of the tuesday 11:00 am lecture slot if it is found, -1 if not found
+    int tue_11_slot_id = -1;
 
     public Environment()
     {
