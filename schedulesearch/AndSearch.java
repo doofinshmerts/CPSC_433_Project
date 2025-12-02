@@ -11,7 +11,7 @@ public class AndSearch
     Environment env;
 
     // how often should status be printed
-    int status_update_freq = 1; // once every x iterations
+    int status_update_freq = 10000; // once every x iterations
 
     // the deepest node this update:
     int max_depth = 0;
@@ -30,6 +30,7 @@ public class AndSearch
     public AndSearch(Environment _env, Problem _s0)
     {
         env = _env;
+        _s0.min_score = Functions.MinBoundScore(_s0, env);
         tree = new PriorityQueue<Problem>(10, new FLeafComparator(env));
         /*
         int[] valid_slots = Functions.ValidTutSlots(env, 5, _s0);
@@ -180,7 +181,7 @@ public class AndSearch
         // check to see if the problem is pruneable
         if(top_problem.min_score >= env.best_score)
         {
-            //System.out.println("Bound");
+            //System.out.println("Bound" + top_problem.min_score);
             // simply do not put the problem back into the queue and return
             return;   
         }
@@ -242,10 +243,11 @@ public class AndSearch
                 Problem new_problem = new Problem(top_problem);
                 new_problem.AssignLecture(selected.id, slot, al);
                 new_problem.min_score = Functions.MinBoundScore(new_problem, env);
-
+                //System.out.println("starting score " + top_problem.score);
                 // don't even bother adding it if its min score is worse than the best score
                 if(new_problem.min_score < env.best_score)
                 {
+                    
                     tree.add(new_problem);
                 }
                 
@@ -269,8 +271,10 @@ public class AndSearch
                 new_problem.AssignTutorial(selected.id, slot, al);
                 new_problem.min_score = Functions.MinBoundScore(new_problem, env);
                 // don't even bother adding it if its min score is worse than the best score
+                //System.out.println("starting score " + top_problem.score);
                 if(new_problem.min_score < env.best_score)
                 {
+                   
                     tree.add(new_problem);
                 }
             }

@@ -13,8 +13,9 @@ import java.util.ArrayList;
  */
 public final class InputParser
 {
-
     
+    // change this to get the parsing detials
+    static final boolean print_data = false;
     // the names of input variables
     private static final String[] HEADINGS = {"Name:", "Lecture slots:", "Tutorial slots:", "Lectures:", "Tutorials:", "Not compatible:", "Unwanted:", "Preferences:", "Pair:", "Partial assignments:"};
     /**
@@ -42,7 +43,7 @@ public final class InputParser
         // check that the file exists
         if(!file.exists() || !file.isFile() || !file.canRead())
         {
-            System.out.println("Could not load from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not load from file: " + input_file);
           
             return false;
         }
@@ -59,7 +60,7 @@ public final class InputParser
             bufferedReader = new BufferedReader(reader);
         }catch (IOException e)
         {
-            System.out.println("Could not load from file: " + input_file);
+            System.out.println("PARSE ERROR:  Could not load from file: " + input_file);
   
             return false;
         }
@@ -68,7 +69,7 @@ public final class InputParser
         String name = ParseForName(bufferedReader);
         if(name == null || name.isEmpty())
         {
-            System.out.println("Could not get dataset name from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not get dataset name from file: " + input_file);
             return false;
         }
         env.dataset_name = name;
@@ -77,7 +78,7 @@ public final class InputParser
         HashMap<Integer, Slot> lecture_slots = new HashMap<Integer, Slot>();
         if(!ParseLectureSlots(bufferedReader, lecture_slots))
         {
-            System.out.println("Could not get lecture slots from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not get lecture slots from file: " + input_file);
             return false;
         }
         env.lecture_slots = lecture_slots;
@@ -103,7 +104,7 @@ public final class InputParser
         HashMap<Integer, Slot> tutorial_slots = new HashMap<Integer, Slot>();
         if(!ParseTutorialSlots(bufferedReader, tutorial_slots))
         {
-            System.out.println("Could not get tutorial slots from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not get tutorial slots from file: " + input_file);
             return false;
         }
         env.tutorial_slots = tutorial_slots;
@@ -185,7 +186,7 @@ public final class InputParser
         HashMap<String, HashMap<Integer, LectureData>> lec_tut_data = new HashMap<String, HashMap<Integer, LectureData>>();
         if(!ParseLectureData(bufferedReader, lec_tut_data))
         {
-            System.out.println("Could not get the lecture data from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not get the lecture data from file: " + input_file);
             return false;
         }
 
@@ -196,10 +197,86 @@ public final class InputParser
         }
         env.num_lectures = count;
         
+        // scan for cpsc 413 and cpsc 351
+        boolean cpsc413_found = false;
+        boolean cpsc351_found = false;
+
+        // determine if CPSC 413 is found
+        if(lec_tut_data.containsKey("CPSC 413"))
+        {
+            System.out.println("INPUT NOTICE: (ParseInputFile) CPSC 413 found");
+            cpsc413_found = true;
+
+            // create and add the new tutorial data
+            TutorialData tut = new TutorialData();
+            tut.course_descriptor = "CPSC 413";
+            tut.tut_num = 0;
+            tut.is_evng = false;
+            tut.is_al = false;
+            tut.use_section = false;
+            tut.name = "CPSC 913 TUT 01";
+
+
+            // get the lecture data that corresponds to this tutorial
+            HashMap<Integer, LectureData> temp = lec_tut_data.get(tut.course_descriptor);
+
+            // get the actual lecture number
+            for(LectureData l : temp.values())
+            {
+                tut.lec_num = l.lec_num;
+                break;
+            }
+           
+            // add the tutorial to the lecture data
+            LectureData lecture = temp.get(tut.lec_num);
+            lecture.tutorials.add(tut);
+
+            // add this lecture data back to the map
+            temp.put(tut.lec_num, lecture);
+            // add this map back to the main map
+            lec_tut_data.put(tut.course_descriptor, temp);
+        }
+
+        // determine if CPSC 351 is found
+        if(lec_tut_data.containsKey("CPSC 351"))
+        {
+            System.out.println("INPUT NOTICE: (ParseInputFile) CPSC 351 found");
+            cpsc351_found = true;
+
+            // create and add the new tutorial data
+            TutorialData tut = new TutorialData();
+            tut.course_descriptor = "CPSC 351";
+            tut.tut_num = 0;
+            tut.is_evng = false;
+            tut.is_al = false;
+            tut.use_section = false;
+            tut.name = "CPSC 851 TUT 01";
+
+            // get the lecture data that corresponds to this tutorial
+            HashMap<Integer, LectureData> temp = lec_tut_data.get(tut.course_descriptor);
+
+            // get the actual lecture number
+            for(LectureData l : temp.values())
+            {
+                tut.lec_num = l.lec_num;
+                break;
+            }
+           
+            // add the tutorial to the lecture data
+            LectureData lecture = temp.get(tut.lec_num);
+            lecture.tutorials.add(tut);
+
+            // add this lecture data back to the map
+            temp.put(tut.lec_num, lecture);
+            // add this map back to the main map
+            lec_tut_data.put(tut.course_descriptor, temp);
+            
+        }
+
         // Get the tutorials ######################################################################################################
         if(!ParseTutorialData(bufferedReader, lec_tut_data))
         {
-            System.out.println("Could not get the tutorial data from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not get the tutorial data from file: " + input_file);
             return false;
         }
 
@@ -328,21 +405,21 @@ public final class InputParser
         // Parse Not Compatible ##################################################################################################################
         if(!ParseNotCompatible(bufferedReader, env.lectures, env.tutorials, lec_tut_data))
         {
-            System.out.println("Could not get not compatible data from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not get not compatible data from file: " + input_file);
             return false;
         }
 
         // Parse Unwanted ################################################################################################################################
         if(!ParseUnwanted(bufferedReader, env.lectures, env.tutorials, lec_tut_data, env.tutorial_slots, env.lecture_slots))
         {
-            System.out.println("Could not get unwanted data from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not get unwanted data from file: " + input_file);
             return false;
         }
 
         // Parse Preferences #################################################################################################################################
         if(!ParsePreferences(bufferedReader, env.lectures, env.tutorials, lec_tut_data, env.lecture_slots, env.tutorial_slots))
         {
-            System.out.println("Could not get preferences data from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not get preferences data from file: " + input_file);
             return false;
         }
 
@@ -350,7 +427,7 @@ public final class InputParser
         ArrayList<Pair> pairs = new ArrayList<Pair>();
         if(!ParsePairs(bufferedReader, lec_tut_data, pairs))
         {
-            System.out.println("Could not get Pairs data from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not get Pairs data from file: " + input_file);
             return false;
         }
         
@@ -366,7 +443,7 @@ public final class InputParser
         ArrayList<UnwantedPair> part_assign_tut = new ArrayList<UnwantedPair>();
         if(!ParsePartialAssignments(bufferedReader, env.lecture_slots, env.tutorial_slots, lec_tut_data, part_assign_tut, part_assign_lec))
         {
-            System.out.println("Could not get unwanted data from file: " + input_file);
+            System.out.println("PARSE ERROR: Could not get unwanted data from file: " + input_file);
             return false;
         }
 
@@ -382,20 +459,18 @@ public final class InputParser
         // if exists add unwanted for any CPSC 413 to time overlapping 18:00 to 19:00
         
         // Special Constraint: CPSC 851 / CPSC 913 dependencies
-        if(lec_tut_data.containsKey("CPSC 351"))
-        {
-            System.out.println("INPUT NOTICE: (ParseInputFile) CPSC 351 found, apply special constraints to CPSC 851 TUT 01 if found"); 
+        if(cpsc351_found)
+        { 
             // Find CPSC 851 TUT
             int targetTutId = -1;
             for(Tutorial t : env.tutorials) {
                 // universal tutorials have the lecture number 0 to indicate this
-                if(t.course_descriptor.equals("CPSC 851") && t.lec_num == 0 && t.tut_num == 1) {
+                if(t.name.equals("CPSC 851 TUT 01") && t.tut_num == 0) {
                     targetTutId = t.id;
-                    System.out.println("INPUT NOTICE: (ParseInputFile) CPSC 851 TUT 01 found");
                     break;
                 }
             }
-            
+
             // Find Slot TU 18:00 (Tutorial Slot)
             int targetSlotId = -1;
             for(Slot s : env.tut_slots_array) {
@@ -403,6 +478,20 @@ public final class InputParser
                     targetSlotId = s.id;
                     break;
                 }
+            }
+
+            // ensure we found the slot
+            if(targetSlotId == -1)
+            {
+                System.out.println("PARSE ERROR: CPSC 351 exists but slot TU, 8:00 does not in file : " + input_file);
+                return false;
+            }
+
+            // ensure we found the tutorial
+            if(targetTutId == -1)
+            {
+                System.out.println("PARSE ERROR: CPSC 351 exists but its id counld not be found : " + input_file);
+                return false;
             }
 
             if(targetTutId != -1 && targetSlotId != -1) {
@@ -422,22 +511,24 @@ public final class InputParser
                     
                     // Incompatible with Tutorials
                     for(TutorialData td : ld.tutorials) {
-                        env.tutorials[td.id].not_compatible_tut.add(targetTutId);
-                        env.tutorials[targetTutId].not_compatible_tut.add(td.id);
+                        // don't be allergic to yourself
+                        if(targetTutId != td.id)
+                        {
+                            env.tutorials[td.id].not_compatible_tut.add(targetTutId);
+                            env.tutorials[targetTutId].not_compatible_tut.add(td.id);    
+                        }
                     }
                 }
             }
         }
 
         // If CPSC 413 exists -> Schedule CPSC 913 TUT at TU 18:00
-        if(lec_tut_data.containsKey("CPSC 413"))
+        if(cpsc413_found)
         {
-            System.out.println("INPUT NOTICE: (ParseInputFile) CPSC 413 found, apply special constraints to CPSC 913 TUT 01 if found"); 
             // Find CPSC 913 TUT
             int targetTutId = -1;
             for(Tutorial t : env.tutorials) {
-                if(t.course_descriptor.equals("CPSC 913") && t.lec_num == 0 && t.tut_num == 1) {
-                    System.out.println("INPUT NOTICE: (ParseInputFile) CPSC 913 TUT 01 found");
+                if(t.name.equals("CPSC 913 TUT 01") && t.tut_num == 0) {
                     targetTutId = t.id;
                     break;
                 }
@@ -450,6 +541,20 @@ public final class InputParser
                     targetSlotId = s.id;
                     break;
                 }
+            }
+
+            // ensure we found the slot
+            if(targetSlotId == -1)
+            {
+                System.out.println("PARSE ERROR: CPSC 413 exists but slot TU, 8:00 does not in file : " + input_file);
+                return false;
+            }
+
+            // ensure we found the tutorial
+            if(targetTutId == -1)
+            {
+                System.out.println("PARSE ERROR: CPSC 351 exists but its id counld not be found : " + input_file);
+                return false;
             }
 
             if(targetTutId != -1 && targetSlotId != -1) {
@@ -469,16 +574,23 @@ public final class InputParser
                     
                     // Incompatible with Tutorials
                     for(TutorialData td : ld.tutorials) {
-                        env.tutorials[td.id].not_compatible_tut.add(targetTutId);
-                        env.tutorials[targetTutId].not_compatible_tut.add(td.id);
+                        // check to ensure that this tutorial is not cpsc 913
+                        if(targetTutId != td.id)
+                        {
+                            env.tutorials[td.id].not_compatible_tut.add(targetTutId);
+                            env.tutorials[targetTutId].not_compatible_tut.add(td.id);
+                        
+                        }
                     }
                 }
             }
         }
 
         // Print the results of the parse 
-        PrintParseResults(env, part_assign_lec, part_assign_tut);
-        
+        if(print_data) 
+        {
+            PrintParseResults(env, part_assign_lec, part_assign_tut);
+        }
         // apply the partial assignments to the starting state #################################################################################################################
         
         // create an initial problem
@@ -487,7 +599,7 @@ public final class InputParser
         // assign the partial assignments for the lectures
         for(UnwantedPair pair : part_assign_lec)
         {
-            System.out.println("\nAssigning lecture: " + pair.id + ", to slot: " + pair.slot_id);
+            //System.out.println("\nAssigning lecture: " + pair.id + ", to slot: " + pair.slot_id);
             // get the valid slots for this lecture assignments
             int[] valid_slots = Functions.ValidLectureSlots(env, pair.id, s0);
             if(valid_slots == null)
@@ -495,7 +607,7 @@ public final class InputParser
                 System.out.println("Invalid partial assignment: assigning lecture: " + pair.id + ", to slot: " + pair.slot_id);
                 return false; 
             }
-            Functions.PrintLectureSlots(valid_slots, env); 
+           
 
             // ensure that the slot exists in the array of valid slots
             boolean found_slot = false;
@@ -518,7 +630,7 @@ public final class InputParser
         // assign the partial assignments for the tutorials
         for(UnwantedPair pair : part_assign_tut)
         {
-            System.out.println("\nAssigning tutorial: " + pair.id + ", to slot: " + pair.slot_id);
+            //System.out.println("\nAssigning tutorial: " + pair.id + ", to slot: " + pair.slot_id);
             // get the valid slots for this lecture assignments
             int[] valid_slots = Functions.ValidTutSlots(env, pair.id, s0);
             // check to see if any slots were returned
@@ -527,7 +639,7 @@ public final class InputParser
                 System.out.println("Invalid partial assignment: assigning tutorial: " + pair.id + ", to slot: " + pair.slot_id);
                 return false; 
             }
-            Functions.PrintTutorialSlots(valid_slots, env); 
+            
 
             // ensure that the slot exists in the array of valid slots
             boolean found_slot = false;
@@ -575,7 +687,7 @@ public final class InputParser
         // print the name of the data set
         System.out.println("dataset name: " + env.dataset_name);
 
-        System.out.println(String.format("w_minfilled: %d\nw_pref: %d\nw_pair: %d\nw_secdiff: %d\npen_lecturemin: %d\npen_tutorialmin: %d\npen_notpaired: %d\npen_section: %d\nmax_iterations: %d\ntime_limit: %4.0f\n",
+        System.out.println(String.format("w_minfilled: %d\nw_pref: %d\nw_pair: %d\nw_secdiff: %d\npen_lecturemin: %d\npen_tutorialmin: %d\npen_notpaired: %d\npen_section: %d\nmax_iterations: %d\ntime_limit: %4.0f\nstart_bound: %10d\n",
             env.w_minfilled,
             env.w_pref,
             env.w_pair,
@@ -585,7 +697,8 @@ public final class InputParser
             env.pen_notpaired,
             env.pen_section,
             env.max_iterations,
-            env.time_limit
+            env.time_limit,
+            env.best_score
         ));
         
         // print the lecture slots
@@ -824,10 +937,12 @@ public final class InputParser
         {
             if(env.constraint_ordering[i].is_lec)
             {
+                System.out.print("rank: " + env.constraint_ordering[i].rank_value + " || ");
                 env.lectures[env.constraint_ordering[i].id].PrintData();
             }
             else
             {
+                System.out.print("rank: " + env.constraint_ordering[i].rank_value + " || ");
                 env.tutorials[env.constraint_ordering[i].id].PrintData();
             }
         }

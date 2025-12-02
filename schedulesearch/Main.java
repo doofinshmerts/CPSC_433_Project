@@ -6,15 +6,15 @@ package schedulesearch;
 public class Main
 {
     // the names of input variables
-    private static final String[] INPUT_VARS = {"w_minfilled", "w_pref", "w_par", "w_secdiff", "pen_lecturemin", "pen_tutorialmin", "pen_notpaired", "pen_section", "max_iterations", "time_limit"};
+    private static final String[] INPUT_VARS = {"w_minfilled", "w_pref", "w_par", "w_secdiff", "pen_lecturemin", "pen_tutorialmin", "pen_notpaired", "pen_section", "max_iterations", "time_limit", "start_bound"};
 
     public static void main(String[] args)
     {
         // check that the number of input arguments is correct
         if(args.length < 9)
         {
-            System.out.println("Not enough input variables, usage java -jar ./build/Build.jar <input_file_name.txt> <w_minfilled> <w_pref> <w_pair> <w_secdiff> <pen_lecturemin> <pen_tutorialmin> <pen_notpaired> <pen_section> <max_iterations> <time_limit>");
-            System.out.println("If max_iterations or time_limit is not set, then they will both be set to infinity");
+            System.out.println("Not enough input variables, usage java -jar ./build/Build.jar <input_file_name.txt> <w_minfilled> <w_pref> <w_pair> <w_secdiff> <pen_lecturemin> <pen_tutorialmin> <pen_notpaired> <pen_section> <max_iterations> <time_limit> <start_bound>");
+            System.out.println("If max_iterations, time_limit, or start_bound is not set, then they will be set to defaults of 10000, 10, 2000000000");
             return;
         }
     
@@ -24,9 +24,9 @@ public class Main
 
         // if there were 11 input arguments then all the input values are given,
         // so try to get all the input variables
-        if(args.length == 11)
+        if(args.length == 12)
         {
-            for(int i = 0; i < 10; i++)
+            for(int i = 0; i < 11; i++)
             {
                 if(!GetSafeIntFromString(args[i+1], buffer))
                 {
@@ -52,33 +52,38 @@ public class Main
             }    
 
             // set the 2 last variables to large numbers
-            input_values[8] = 1000000000;
-            input_values[9] = 1000000000;
+            input_values[8] = 10000;
+            input_values[9] = 10;
+            input_values[10] = 2000000000;
             System.out.println(String.format("%s set to: %5d", INPUT_VARS[8], input_values[8]));
             System.out.println(String.format("%s set to: %5d", INPUT_VARS[9], input_values[9]));
+            System.out.println(String.format("%s set to: %5d", INPUT_VARS[10], input_values[10]));
         }
 
         // setup the environment and starting state
         Environment env = new Environment();
         // set the calculation variables for the environment
-        env.SetWeights(input_values[0],input_values[1],input_values[2],input_values[3],input_values[4],input_values[5],input_values[6],input_values[7],input_values[8],input_values[9]); 
+        env.SetWeights(input_values[0],input_values[1],input_values[2],input_values[3],input_values[4],input_values[5],input_values[6],input_values[7],input_values[8],input_values[9], input_values[10]); 
         Problem s0 = new Problem();
 
         // use the input parser to create the environment and starting state
         if(InputParser.ParseInputFile(args[0], env, s0))
         {
+            // create the and search
             AndSearch search = new AndSearch(env, s0);
-            Problem pr = new Problem();
-            pr.SetupProblem(10,10,10,10);
             
+            // run the search 
             if(search.RunSearch())
             {
+                // print solution output
                 System.out.println(String.format("\nSolution score: %d, best possible score: %d\n", env.best_score, env.BestPossibleScore()));
                 Functions.PrintEvaluations(env.best_sol, env);
+                System.out.println("\nSOLUTION:\n");
                 Functions.PrintProblem(env.best_sol,env);
             }
             else
             {
+                // print failure message
                 System.out.println("no solution is possible");
             }
         }

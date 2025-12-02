@@ -9,10 +9,10 @@ import java.util.Collections;
  */ 
 public class Environment
 {
-    // For the constraint ranking
-    int w_al = 1000000;
-    int w_evng = 100000;
-    int w_5xx = 10000;
+    // the constraint ranking weights
+    int w_al = 100;
+    int w_evng = 10;
+    int w_5xx = 10;
 
     final boolean remove_tue_11_slot = true; // if true we remove the tuesday at 11:00 - 12:30 lecture slot if it is found
 
@@ -104,7 +104,7 @@ public class Environment
      * @param _max_iterations
      * @param _time_limit
      */ 
-    public void SetWeights(int _w_minfilled, int _w_pref, int _w_pair, int _w_secdiff, int _pen_lecturemin, int _pen_tutorialmin, int _pen_notpaired, int _pen_section, int _max_iterations, int _time_limit)
+    public void SetWeights(int _w_minfilled, int _w_pref, int _w_pair, int _w_secdiff, int _pen_lecturemin, int _pen_tutorialmin, int _pen_notpaired, int _pen_section, int _max_iterations, int _time_limit, int start_bound)
     {
         w_minfilled = _w_minfilled;
         w_pref = _w_pref;
@@ -116,6 +116,7 @@ public class Environment
         pen_section = _pen_section;
         max_iterations = _max_iterations;
         time_limit = (double)_time_limit;
+        best_score = start_bound;
     }
 
     /**
@@ -331,7 +332,7 @@ class ConstraintComparator implements Comparator<LecOrTutId>
      * @param b the second object to be compared.
      * @return 1 if a should appear above b, 0 if they are equal, -1 otherwise
      */
-    public int compare(LecOrTutId b, LecOrTutId a)
+    public int compare(LecOrTutId a, LecOrTutId b)
     {
         // sort by the following priorities
         // 1. evening lectures/tutorials are ranked first, tie break on ordering
@@ -340,21 +341,21 @@ class ConstraintComparator implements Comparator<LecOrTutId>
         // 4. number of occurances in notCompatible, Unwanted, Sections, and parent lectures/ child tutorails
         
         // sort based on rank
-        if(b.rank_value > a.rank_value)
+        if(a.rank_value > b.rank_value)
         {
             return -1;
         }
-        else if(b.rank_value < a.rank_value)
+        else if(a.rank_value < b.rank_value)
         {
             return 1;
         }
         
         // if same rank, then lectures first
-        if(b.is_lec && !a.is_lec)
+        if(a.is_lec && !b.is_lec)
         {
             return -1;
         }
-        else if(!b.is_lec && a.is_lec)
+        else if(!a.is_lec && b.is_lec)
         {
             return 1;
         }

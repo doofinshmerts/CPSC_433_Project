@@ -234,16 +234,17 @@ public final class Functions
         // Sum of lecture penalties
         for (int i = 0; i < pr.lectures.length; i++) {
             int slotId = pr.lectures[i];
-            // skip unassigned
-            if (env.lectures[i].preferences.containsKey(slotId)) 
-            {
-                lecPenalty += env.lectures[i].preferences.get(slotId);
-            }
-            else
+            // if unassigned assume top preference
+            if(slotId == -1)
             {
                 // if slot is not assigned, or this lecture has no preferences, then
                 // assume it got it's first choice, first choice is zero if it has no preferences
                 lecPenalty += env.lectures[i].first_choice;
+            }
+            else if (env.lectures[i].preferences.containsKey(slotId)) 
+            {
+                // if slot is assigned and is a preference then add its value
+                lecPenalty += env.lectures[i].preferences.get(slotId);
             }
         }
 
@@ -251,16 +252,17 @@ public final class Functions
         for (int i = 0; i < pr.tutorials.length; i++) {
             int slotId = pr.tutorials[i];
 
-            //skip unassigned
-            if (env.tutorials[i].preferences.containsKey(slotId))
-            {
-                tutPenalty += env.tutorials[i].preferences.get(slotId);
-            }
-            else
+            // if unassigned assume top preference
+            if(slotId == -1)
             {
                 // if slot is not assigned, or this tutorial has no preferences, 
                 // then assume it got it's first choice, first choice is zero if it has no preferences
                 tutPenalty += env.tutorials[i].first_choice;
+            }
+            else if (env.tutorials[i].preferences.containsKey(slotId))
+            {
+                // if slot is assigned and is a preference then add its value
+                tutPenalty += env.tutorials[i].preferences.get(slotId);
             }
         }
 
@@ -440,8 +442,8 @@ public final class Functions
         // this hashset will store the indices of all the slots that are not valid
         HashSet<Integer> slot_mask = new HashSet<Integer>();
 
-        // if we need to remove the tuesday at 11:00 lecture slot then add it to the filter of every lecture
-        if(env.remove_tue_11_slot)
+        // if we need to remove the tuesday at 11:00 lecture slot then add it to the filter of every lecture if it exists
+        if(env.remove_tue_11_slot && env.tue_11_slot_id != -1)
         {
             slot_mask.add(env.tue_11_slot_id);
         }
@@ -985,6 +987,11 @@ public final class Functions
 
                 if(lec_slot.id == l_slot)
                 {
+                    lec.PrintData();
+                    lec_slot.PrintSlot();
+                    System.out.println("above lecture overlaps with lecture: " + env.lectures[l].name);
+                    env.lectures[l].PrintData();
+                    env.lec_slots_array[l_slot].PrintSlot();
                     // overlap found, return false
                     return false;
                 }
@@ -998,6 +1005,11 @@ public final class Functions
 
                 if(AreLecTutSlotsOverlapping(lec_slot, s))
                 {
+                    lec.PrintData();
+                    lec_slot.PrintSlot();
+                    System.out.println("above lecture overlaps with tutorial: ");
+                    env.tutorials[t].PrintData();
+                    s.PrintSlot();
                     // overlap found, return false
                     return false;
                 }
@@ -1021,6 +1033,11 @@ public final class Functions
 
                 if(AreLecTutSlotsOverlapping(l_slot, tut_slot))
                 {
+                    tut.PrintData();
+                    tut_slot.PrintSlot();
+                    System.out.println("above tutorial overlaps with lecture: ");
+                    env.lectures[l].PrintData();
+                    l_slot.PrintSlot();
                     // overlap found, return false
                     return false;
                 }
@@ -1034,6 +1051,11 @@ public final class Functions
 
                 if(tut_slot.id == s)
                 {
+                    tut.PrintData();
+                    tut_slot.PrintSlot();
+                    System.out.println("above tutorial overlaps with tutorial: ");
+                    env.tutorials[t].PrintData();
+                    env.tut_slots_array[s].PrintSlot();
                     // overlap found, return false
                     return false;
                 }
