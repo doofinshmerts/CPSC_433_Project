@@ -9,8 +9,8 @@ import java.util.Collections;
  */ 
 public class Environment
 {
-    // the constraint ranking weights
-    int w_al = 100;
+    // the constraint ranking weights (best results come from 100, 10, 10)
+    int w_al = 100; 
     int w_evng = 10;
     int w_5xx = 10;
 
