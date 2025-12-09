@@ -1,6 +1,7 @@
 package schedulesearch;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Comparator;
 import java.util.Collections;
 
@@ -87,6 +88,11 @@ public class Environment
 
     // this is the slot id of the tuesday 11:00 am lecture slot if it is found, -1 if not found
     int tue_11_slot_id = -1;
+    public Map<Integer, Slot> lectureSlots;
+    public Map<Integer, Slot> tutorialSlots;
+    public Slot[] lecSlotsArray;
+    public Object tutSlotsArray;
+    public int[][] tutSlotLecSlot;
 
     public Environment()
     {

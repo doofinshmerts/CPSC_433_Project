@@ -1,1149 +1,1169 @@
 package schedulesearch;
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
- * the Functions class contains all the static functions needed for the And Tree search
- * This class was created so that these functions are available to the inputParser and Main classes as well
+ * The InputParser class has static methods for parsing the input file and returning
+ * the environment "Env" and the starting state "s0"
  */
-public final class Functions
-{
-
-
-    /**
-     * Solvable determines if problem pr is solvable in the 
-     * @param pr the problem to check
-     * @param env the environment
-     * @return true if pr is solvable, false otherwise
-     */ 
-    public static boolean NotSatisfiable(Problem pr, Environment env)
-    {
-        // sudo code
-        // if even a single lecture or tutorial has no valid slot assignments then return ture
-
-        // iterate through all lecs in pr
-        for (int i = 0; i < pr.lectures.length; i++) {
-            // if a lec assignment is null, check if it has any valid slot assignments
-            if (pr.lectures[i] == -1) 
-            {
-                int[] validLecs = ValidLectureSlots(env, i, pr);
-                if(validLecs == null)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // iterate through all tutorials in pr
-        for (int i = 0; i < pr.tutorials.length; i++) {
-            // if a tut assignment is null, check if it has any valid assignments
-            if (pr.tutorials[i] == -1) 
-            {
-                int[] validTuts = ValidTutSlots(env, i, pr);
-                // if there are valid assignments, solution can be expanded still
-                if (validTuts == null) 
-                {
-                    return true;
-                }
-            }
-        }
-
-        //solution expandable
-        return false;
-    }
-
-    /**
-     * Pick the next lecture or tutorial to expand on based on which has the least number of slots
-     * 
-     * @param pr The problem find a transition for
-     * @param env The environment the problem is in
-     * @param slots The ids of the slots to assign to the selected lecture/tutorial
-     * @param selected The id of the lecture or tutorial to assign the slots to
-     * @return True if this solution can be satisfied, false if this problem cannot be satisfied (at least one lecture/tutorial has no available slots)
-     */
-    public static boolean Ftrans(Problem pr, Environment env, int[] slots, LecOrTutId selected)
-    {
-        int min_so_far = 2000000; // big enough
-
-        // iterate through all lecs in pr
-        for (int i = 0; i < pr.lectures.length; i++) {
-            // if a lec assignment is null, check if it has any valid slot assignments
-            if (pr.lectures[i] == -1) 
-            {
-                int[] validLecs = ValidLectureSlots(env, i, pr);
-                if(validLecs == null)
-                {
-                    // solution cannot be satisfied
-                    return false;
-                }
-                else if(validLecs.length < min_so_far)
-                {
-                    // if this is the least number so far then record its slots and id
-                    min_so_far = validLecs.length;
-                    slots = validLecs;
-                    selected.is_lec = true;
-                    selected.id = i;
-                }
-            }
-        }
-
-        // iterate through all tutorials in pr
-        for (int i = 0; i < pr.tutorials.length; i++) {
-            // if a tut assignment is null, check if it has any valid assignments
-            if (pr.tutorials[i] == -1) 
-            {
-                int[] validTuts = ValidTutSlots(env, i, pr);
-                if (validTuts == null) 
-                {
-                    // solution cannot be satisfied
-                    return true;
-                }
-                else if(validTuts.length < min_so_far)
-                {
-                    // if this is the least number so far then record its slots and id
-                    min_so_far = validTuts.length;
-                    slots = validTuts;
-                    selected.is_lec = false;
-                    selected.id = i;
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Fbound determines if the leaf represented by this problem can be pruned from the search tree
-     * It does this by determining if there is no possible way for this problem to achive a better score than the one that has already been found
-     * @param pr the problem to check
-     * @param env the environment that stores the best score so far
-     * @return true if this problem cannot give a better solution, false otherwise
-     */ 
-    public static boolean FBound(Problem pr, Environment env)
-    {
-        // sudo code
-        // evaluate the minboundscore of pr, if this score is greater than the best score found so far return true
-        // return false otherwise
-
-        int mbs = MinBoundScore(pr, env);
-        if (mbs > env.best_score) return true;
-        return false;
-    }
-
-    /**
-     * Depth gets the depth of a problem in the tree
-     * @param pr the problem to evaluate
-     * @return the depth of the problem (0 is the root of the tree)
-     */ 
-    public static int Depth(Problem pr)
-    {
-        // sudo code 
-        // during each expansion, only one lecture or tutorial is assigned, so depth is the number of tutorials and lectures assigned
-        // maybe add a feild to Problem that records the depth in the tree and just return that
-        // return the depth count, return depth if we want to use function instead of pr.depth
-        return pr.depth;
-    }
-
-    /**
-     * MinBoundScore calculates the minimum score of a problem that cannot do better than
-     * @param pr the problem to evaluate
-     * @param env the environment with the penalties and weights
-     * @return the score of the problem
-     */ 
-    public static int MinBoundScore(Problem pr, Environment env)
-    {
-        // EvalPref and EvalSecDiff are permenant scores that cannot be reduced as more assignments are made
-        int sum = EvalSecDiff(pr, env) * env.w_secdiff;
-        sum += EvalPref(pr, env) * env.w_pref;
-        return sum;
-    }
-
-    /**
-     * Eval calculates the score of a problem assignment
-     * @param pr the problem to score
-     * @param env the environment with the scoring parameters
-     * @return the score of the problem
-     */
-    public static int Eval(Problem pr, Environment env)
-    {
-        int sum = EvalMinFilled(pr, env) * env.w_minfilled;
-        sum += EvalPref(pr, env) * env.w_pref;
-        sum += EvalPair(pr, env) * env.w_pair;
-        sum += EvalSecDiff(pr, env) * env.w_secdiff;
-        return sum;
-    }
-
-    /**
-     * Print the components of the score
-     */
-    public static void PrintEvaluations(Problem pr, Environment env)
-    {
-        System.out.println("Min Filled: " + EvalMinFilled(pr,env));
-        System.out.println("Pref: " + EvalPref(pr,env));
-        System.out.println("Pair: " + EvalPair(pr,env));
-        System.out.println("Sec: " + EvalSecDiff(pr,env));
-    }
-
-    /**
-     * the penalty from the minimum assignment requirements not being filled
-     * @param pr the problem to rank
-     * @param env the environment data
-     */
-    private static int EvalMinFilled(Problem pr, Environment env)
-    {
-        // Variables for lecture penalty and tutorial penalty
-        int lec_penalty = 0;
-        int tut_penalty = 0;
-
-        // go through each slot and find the differenc between min filled and actual fill
-        for(int i = 0; i < pr.lec_slot_fill.length; i++)
-        {
-            int diff = env.lec_slots_array[i].min - pr.lec_slot_fill[i];
-
-            // this only should be counted if the number filled is less than the minimum required
-            if(diff > 0)
-            {
-                lec_penalty += diff;
-            }
-        }
-
-        for(int i = 0; i < pr.tut_slot_fill.length; i++)
-        {
-            int diff = env.tut_slots_array[i].min - pr.tut_slot_fill[i];
-            
-            // this only should be counted if the number filled is less than the minimum required
-            if(diff > 0)
-            {
-                tut_penalty += diff;
-            }
-        }
-
-        return (lec_penalty*env.pen_lecturemin + tut_penalty*env.pen_tutorialmin);
-    }
-
-    private static int EvalPref(Problem pr, Environment env)
-    {
-        int lecPenalty = 0;
-        int tutPenalty = 0;
-
-        // calculation starts by assuming that all problems have been given their ideal pick,
-        // 
-
-        // Sum of lecture penalties
-        for (int i = 0; i < pr.lectures.length; i++) {
-            int slotId = pr.lectures[i];
-            // if unassigned assume top preference
-            if(slotId == -1)
-            {
-                // if slot is not assigned, or this lecture has no preferences, then
-                // assume it got it's first choice, first choice is zero if it has no preferences
-                lecPenalty += env.lectures[i].first_choice;
-            }
-            else if (env.lectures[i].preferences.containsKey(slotId)) 
-            {
-                // if slot is assigned and is a preference then add its value
-                lecPenalty += env.lectures[i].preferences.get(slotId);
-            }
-        }
-
-        // Sum of tutorial penalites
-        for (int i = 0; i < pr.tutorials.length; i++) {
-            int slotId = pr.tutorials[i];
-
-            // if unassigned assume top preference
-            if(slotId == -1)
-            {
-                // if slot is not assigned, or this tutorial has no preferences, 
-                // then assume it got it's first choice, first choice is zero if it has no preferences
-                tutPenalty += env.tutorials[i].first_choice;
-            }
-            else if (env.tutorials[i].preferences.containsKey(slotId))
-            {
-                // if slot is assigned and is a preference then add its value
-                tutPenalty += env.tutorials[i].preferences.get(slotId);
-            }
-        }
-
-        return (env.total_pref_sum - (lecPenalty + tutPenalty));
-        //return lecPenalty + tutPenalty;
-    }
-
+public final class Functions {
     
-    private static int EvalPair(Problem pr, Environment env)
-    {
-        // variables for accumulating
-        int penalty = 0;
-        int a;
-        int b;
-
-        // go through each pair
-        for (Pair pair : env.pairs) 
-        {
-            // case1: both are lectures
-            if(pair.is_lec1 && pair.is_lec2)
-            {
-                // because they are both lectures we simply verify that the id is the same
-                a = pr.lectures[pair.id1];
-                b = pr.lectures[pair.id2];
-                if(a >= 0 && (a != b))
-                {
-                    penalty += env.pen_notpaired;
-                }
-            }
-            // case2: lecture and tutorial
-            else if(pair.is_lec1 && !pair.is_lec2)
-            {
-                // the starting time of a tutorial slot can always be mapped to a single lecture slot 
-                a = pr.lectures[pair.id1];
-                b = env.tutid_to_lecid[pr.tutorials[pair.id2]];
-                if(a >= 0 && (a != b))
-                {
-                    penalty += env.pen_notpaired;
-                }
-            }
-            // case3; tutorial and lecture
-            else if(!pair.is_lec1 && pair.is_lec2)
-            {
-                // the starting time of a tutorial slot can always be mapped to a single lecture slot 
-                a = pr.lectures[pair.id2];
-                b = env.tutid_to_lecid[pr.tutorials[pair.id1]];
-                if(a >= 0 && (a != b))
-                {
-                    penalty += env.pen_notpaired;
-                }
-            }
-            // case4; tutorial and tutorial
-            else
-            {
-                // because they are both tutorials we simply verify that the id is the same
-                a = pr.tutorials[pair.id1];
-                b = pr.tutorials[pair.id2];
-                if(a >= 0 && (a != b))
-                {
-                    penalty += env.pen_notpaired;
-                }
-            }
-        }
-
-        return penalty;
-    }
-
-    private static int EvalSecDiff(Problem pr, Environment env)
-    {
-        int section_penalty = 0;
-
-        // loop over every section and find number of overlapping lectures
-        for(int[] lecs : env.sections.values())
-        {
-            // record which elements we have seen
-            HashMap<Integer, Integer> found_slots = new HashMap<Integer, Integer>();
-
-            // loop through the lectures in this section
-            for(int i = 0; i < lecs.length; i++)
-            {
-                // get the slot assigned to this lecture
-                int slot_id = pr.lectures[lecs[i]];
-                if(slot_id >= 0)
-                {
-                    // if this slot has been seen before then add to the penalty
-                    // otherwise add this slot to the set of found slots
-                    if(found_slots.containsKey(slot_id))
-                    {
-                        // found another occurance of this, so increment by 1
-                        int value = found_slots.get(slot_id)+1;
-                        found_slots.put(slot_id, value);
-                    }
-                    else
-                    {
-                        // new slot
-                        found_slots.put(slot_id, 1);
-                    }
-                }
-            }
-
-            // count the number of pairs that violate this
-            for(Integer val : found_slots.values())
-            {
-                // number of unique pairs from n items is n(n-1)/2
-                section_penalty += (val*(val-1)) >> 1;
-                //section_penalty += val-1;
-            }
-        }
-
-        return (section_penalty * env.pen_section);
-    }
-
-    /**
-     * Ftrans selects the next lecture or tutorial based on the constraint rank 
-     * 
-     */
-    public static LecOrTutId SelectLecTut(Problem pr, Environment env)
-    {
-        // iterate through the sorted array of lectures and tutorials until we find one that has not yet been assigned
-        for(int i = (pr.last_selection+1); i < env.constraint_ordering.length; i++)
-        {
-            // the lecture or tutorial
-            LecOrTutId temp = env.constraint_ordering[i];
-            // check to see if this lecture/tutorial has been assigned
-            if(temp.is_lec)
-            {  
-                // lecture
-                int slot_id = pr.lectures[temp.id];
-                if(slot_id == -1)
-                {
-                    // increment the last selection number to the current index
-                    pr.last_selection = i;
-                    return temp;
-
-                }
-
-            }
-            else
-            {
-                // tutorial
-                int slot_id = pr.tutorials[temp.id];
-                if(slot_id == -1)
-                {
-                    // increment the last selection number to the current index
-                    pr.last_selection = i;
-                    return temp;
-                }
-            }
-        }
-
-        // something is not right if we get here
-        return null;
-    }
-
-    /**
-     * ValidLectureSlots finds all valid slots for a given lecture
-     * @param env the environment
-     * @param lec_id the unique id of the lecture 
-     * @param pr the problem that has the existing lecture and tutorial assignments
-     * @return an array of unique lecture slot id's
-     */ 
-    public static int[] ValidLectureSlots(Environment env, int lec_id, Problem pr)
-    {
-        // sudo code 
-        // start with all lecture slots and use the following filters
-        // if slot s is full then remove s from consideration
-        // if lec_id is an active learning lecture and slot s has no free active learning slots then remove s from consideration
-        // if any of the tutorials for lecture l have been assigned slot s then remove s from consideration
-        // if any of the lectures or tutorials that are not compatible with l have been assigned slot s then remove s from consideration
-        // if unwanted(l,s) is true then remove s from consideration
-        // if lecture l is an evening lecture and s is not an evening time slot then remove s from consideration
-        // if lecture l is a 5XX level course and there is another 5XX level lecture assigned to slot s then remove s from consideration
-        // return the id's of all remaining slots
-
-        // get the information about the lecture
-        Lecture lecture = env.lectures[lec_id];
-        // this hashset will store the indices of all the slots that are not valid
-        HashSet<Integer> slot_mask = new HashSet<Integer>();
-
-        // if we need to remove the tuesday at 11:00 lecture slot then add it to the filter of every lecture if it exists
-        if(env.remove_tue_11_slot && env.tue_11_slot_id != -1)
-        {
-            slot_mask.add(env.tue_11_slot_id);
-        }
-
-        // Find over capacity slots ####################################################################################################################
-        // if the slot is at capacity then add it to the mask
-        for(int i = 0; i < pr.lec_slot_fill.length; i++)
-        {
-            if(pr.lec_slot_fill[i] >= env.lec_slots_array[i].max)
-            {
-                // this lecture slot does not have enough spaces for this lecture
-                slot_mask.add(i);
-                continue;
-            }
-            else if(lecture.is_al && (pr.lec_al_slot_fill[i] >= env.lec_slots_array[i].almax))
-            {
-                // this lecture slot does not have enough active learning spaces for this active learning lecture
-                slot_mask.add(i);
-                continue;
-            }
-
-            if(lecture.is_evng && !env.lec_slots_array[i].is_evng)
-            {
-                // this is not an evening lecture slot
-                slot_mask.add(i);
-            }
-        }
+    // Change this to get the parsing details
+    private static final boolean PRINT_DATA = false;
     
-        // find slots of the corresponding tutorials ##########################################################################################################
-        for(int i = 0; i < lecture.tutorials.length; i++)
-        {
-            // the id of the tutorial
-            int id = pr.tutorials[lecture.tutorials[i]];
-            if(id != -1)
-            {
-                // add the ids of the lectures that overlap this tutorial
-                for(int j = 0; j < env.tutslot_lecslot[id].length; j++)
-                {
-                    slot_mask.add(env.tutslot_lecslot[id][j]);
-                }
-            }            
+    // The names of input variables
+    private static final String[] HEADINGS = {
+        "Name:", "Lecture slots:", "Tutorial slots:", "Lectures:", 
+        "Tutorials:", "Not compatible:", "Unwanted:", "Preferences:", 
+        "Pair:", "Partial assignments:"
+    };
+    
+    // Constants for parsing
+    private static final String TUTORIAL_MARKER = "TUT";
+    private static final String LAB_MARKER = "LAB";
+    private static final String LECTURE_MARKER = "LEC";
+    private static final String TRUE_VALUE = "true";
+    
+    // Day abbreviations
+    private static final Map<String, Integer> DAY_MAPPING = Map.of(
+        "MO", Slot.MONDAY,
+        "TU", Slot.TUESDAY,
+        "WE", Slot.WEDNESDAY,
+        "TR", Slot.THURSDAY,
+        "FR", Slot.FRIDAY
+    );
+    
+    /**
+     * Parses an input file for the environment variables and the starting state.
+     * The parser first gets all information from the file and creates the environment.
+     * Then it uses any partial assignments to populate the starting state.
+     * If there are any errors in parsing the file, or if the partial assignments
+     * are unsatisfiable, then return an error.
+     * 
+     * @param inputFile the input file to parse
+     * @param env the environment to return
+     * @param s0 the start state to return
+     * @return false if there was an error, otherwise true
+     */
+    public static boolean parseInputFile(String inputFile, Environment env, Problem s0) {
+        File file = new File(inputFile);
+
+        // Check that the file exists
+        if (!file.exists() || !file.isFile() || !file.canRead()) {
+            System.err.println("PARSE ERROR: Could not load from file: " + inputFile);
+            return false;
         }
 
-        // find not compatible slot assignments ######################################################################################################################
-        // loop through the not compatible lectures/tutorials and get their slot assignments
-        for(Integer lec: lecture.not_compatible_lec)
-        {
-            // lec is the id of the not compatible lecture, use this to get the slot assigned to lec
-            int slot_id = pr.lectures[lec];
-            if(slot_id != -1)
-            {
-                // add the id of this slot
-                slot_mask.add(slot_id);
+        System.out.println("\n\nReading from file: " + inputFile);
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            return parseFileContents(reader, env, s0);
+        } catch (IOException e) {
+            System.err.println("PARSE ERROR: Could not read from file: " + inputFile);
+            return false;
+        }
+    }
+
+    /**
+     * Main parsing method that orchestrates the parsing of different sections
+     */
+    private static boolean parseFileContents(BufferedReader reader, Environment env, Problem s0) throws IOException {
+        // Parse dataset name
+        env.datasetName = parseDatasetName(reader);
+        if (env.datasetName == null || env.datasetName.isEmpty()) {
+            System.err.println("PARSE ERROR: Could not get dataset name");
+            return false;
+        }
+
+        // Parse slots and data
+        Map<Integer, Slot> lectureSlots = parseSlotSection(reader, HEADINGS[1], true);
+        Map<Integer, Slot> tutorialSlots = parseSlotSection(reader, HEADINGS[2], false);
+        
+        if (lectureSlots == null || tutorialSlots == null) {
+            return false;
+        }
+
+        // Process lecture slots
+        env.lectureSlots = lectureSlots;
+        env.lecSlotsArray = new Slot[lectureSlots.size()];
+        processLectureSlots(env);
+
+        // Process tutorial slots
+        env.tutorialSlots = tutorialSlots;
+        env.tutSlotsArray = new Slot[tutorialSlots.size()];
+        env.tutSlotLecSlot = new int[env.tutSlotsArray.length][];
+        processTutorialSlots(env);
+
+        // Create slot mapping
+        createSlotMappings(env);
+
+        // Parse lecture and tutorial data
+        CourseDataContainer courseData = parseCourseData(reader);
+        if (courseData == null) {
+            return false;
+        }
+
+        // Handle special courses
+        handleSpecialCourses(courseData);
+
+        // Process all course data into environment
+        if (!processAllCourseData(env, courseData)) {
+            return false;
+        }
+
+        // Parse constraints and preferences
+        if (!parseConstraints(reader, env, courseData)) {
+            return false;
+        }
+
+        // Setup environment
+        env.SetupEnvironment();
+
+        // Apply partial assignments
+        return applyPartialAssignments(reader, env, s0, courseData);
+    }
+
+    /**
+     * Parses a slot section from the file
+     */
+    private static Map<Integer, Slot> parseSlotSection(BufferedReader reader, String heading, boolean isLecture) throws IOException {
+        skipToHeading(reader, heading);
+        
+        Map<Integer, Slot> slots = new HashMap<>();
+        String line = reader.readLine();
+        
+        while (line != null && !line.contains(getNextHeading(heading))) {
+            if (!line.trim().isEmpty()) {
+                Slot slot = parseSlotLine(line);
+                if (slot != null) {
+                    int hash = isLecture ? slot.getLecHash() : slot.getTutHash();
+                    slots.put(hash, slot);
+                } else {
+                    System.err.println("INPUT WARNING: Invalid slot information in line: " + line);
+                }
+            }
+            line = reader.readLine();
+        }
+        
+        if (line == null || !line.contains(getNextHeading(heading))) {
+            System.err.println("PARSE ERROR: Could not find next heading after: " + heading);
+            return null;
+        }
+        
+        return slots;
+    }
+
+    /**
+     * Gets the next heading after the current one
+     */
+    private static String getNextHeading(String currentHeading) {
+        for (int i = 0; i < HEADINGS.length - 1; i++) {
+            if (HEADINGS[i].equals(currentHeading)) {
+                return HEADINGS[i + 1];
             }
         }
+        return "";
+    }
 
-        for(Integer tut: lecture.not_compatible_tut)
-        {
-            // the id of the tutorial
-            int id = pr.tutorials[tut];
-            if(id != -1)
-            {
-                // add the ids of the lectures that overlap this tutorial
-                for(int j = 0; j < env.tutslot_lecslot[id].length; j++)
-                {
-                    slot_mask.add(env.tutslot_lecslot[id][j]);
-                }
-            }            
-        }
-
-        // find the Unwanted slots #################################################################################################################################
-        for(Integer slot_id: lecture.unwanted)
-        {
-            slot_mask.add(slot_id);
-        }
-        
-        // find other 5xx level lectures if this is a 5xx level lecture ############################################################################################################################
-        if(lecture.is_5xx)
-        {
-            for(int i = 0; i < env.lectures_5xx.length; i++)
-            {
-                int id = pr.lectures[env.lectures_5xx[i]];
-                if(id != -1)
-                {
-                    slot_mask.add(id);
-                }
-            }
-        
-        }
-        
-        // filter the array list
-        int num_slots = env.lec_slots_array.length - slot_mask.size();
-        if(num_slots <= 0)
-        {
+    /**
+     * Parses a single slot line
+     */
+    private static Slot parseSlotLine(String line) {
+        String[] elements = line.split(",");
+        if (elements.length != 5) {
             return null;
         }
 
-        int[] valid_slots = new int[num_slots];
-        int j = 0;
-        for(int i = 0; i < env.lec_slots_array.length; i++)
-        {
-            if(!slot_mask.contains(i))
-            {
-                valid_slots[j] = i;
-                j++;
-            }
-        }
-
-        return valid_slots;
-    }
-
-    /**
-     * print the list of lecture slots
-     * @param ids the ids to print
-     * @param env the environment variables
-     */
-    public static void PrintLectureSlots(int[] ids, Environment env)
-    {
-        if(ids == null)
-        {
-            return;
-        }
-        System.out.println("Lecture slots:");
-        for(int i = 0; i < ids.length; i++)
-        {
-            System.out.print("\t");
-            env.lec_slots_array[ids[i]].PrintSlot();
-        }
-    }
-
-    /**
-     * print the list of tutorial slots
-     * @param ids the ids to print
-     * @param env the environment variables
-     */
-    public static void PrintTutorialSlots(int[] ids, Environment env)
-    {
-        if(ids == null)
-        {
-            return;
-        }
-        System.out.println("Tutorial slots:");
-        for(int i = 0; i < ids.length; i++)
-        {
-            System.out.print("\t");
-            env.tut_slots_array[ids[i]].PrintSlot();
-        }
-    }
-
-    /**
-     * ValidTutSlots finds all valid slots for a given tutorial
-     * @param env the environment
-     * @param tut_id the unique tutorial id of the tutorial
-     * @param pr the problem that has the existing lecture and tutorial assignments
-     * @return an array of unique tutorial slot id's
-     */
-    public static int[] ValidTutSlots(Environment env, int tut_id, Problem pr)
-    {
-        // sudo code 
-        // start with all tutorial slots and use the following filters
-        // if slot s is full then remove s from consideration
-        // if tut_id is an active learning tutorial and slot s has no free active learning slots then remove s from consideration
-        // if the lecture associated with tutorial t has been assigned slot s then remove slot s from consideration
-        // if any of the lectures or tutorials that are not compatible with t have been assigned slot s then remove s from consideration
-        // if unwanted(t,s) is true then remove s from consideration
-        // return the id's of all remaining slots
-        // get the information about the lecture
-
-        Tutorial tutorial = env.tutorials[tut_id];
-        // this hashset will store the indices of all the slots that are not valid
-        HashSet<Integer> slot_mask = new HashSet<Integer>();
-
-        // Find over capacity slots ####################################################################################################################
-        // if the slot is at capacity then add it to the mask
-        for(int i = 0; i < pr.tut_slot_fill.length; i++)
-        {
-            if(pr.tut_slot_fill[i] >= env.tut_slots_array[i].max)
-            {
-                // this lecture slot does not have enough spaces for this lecture
-                slot_mask.add(i);
-                continue;
-            }
-            else if(tutorial.is_al && (pr.tut_al_slot_fill[i] >= env.tut_slots_array[i].almax))
-            {
-                // this lecture slot does not have enough active learning spaces for this active learning lecture
-                slot_mask.add(i);
-                continue;
-            }
-
-            if(tutorial.is_evng && !env.tut_slots_array[i].is_evng)
-            {
-                // this is not an evening lecture slot
-                slot_mask.add(i);
-            }
-        }
-    
-        // find slots of the corresponding lecture ##########################################################################################################
-
-        for(int i = 0; i < tutorial.parent_lectures.length; i++)
-        {
-            // the id of the lecture slot
-            int id = pr.lectures[tutorial.parent_lectures[i]];
-            if(id != -1)
-            {
-                // add the ids of the tutorial slots that overlap this lecture slot
-                for(int j = 0; j < env.lecslot_tutslot[id].length; j++)
-                    {
-                        slot_mask.add(env.lecslot_tutslot[id][j]);
-                    }
-            }            
-        }
-
-        // find not compatible slot assignments
-        // loop through the not compatible lectures/tutorials and get their slot assignments
-        for(Integer lec: tutorial.not_compatible_lec)
-        {
-            // lec is the id of the not compatible lecture, use this to get the slot assigned to lec
-            int slot_id = pr.lectures[lec];
-            if(slot_id != -1)
-            {
-                // get the overlapping tutorail slots for this lecture slot
-                for(int i = 0; i < env.lecslot_tutslot[slot_id].length; i++)
-                {
-                    slot_mask.add(env.lecslot_tutslot[slot_id][i]);
-                }
-            }
-        }
-
-        for(Integer tut: tutorial.not_compatible_tut)
-        {
-            // the id of the tutorial
-            int id = pr.tutorials[tut];
-            if(id != -1)
-            {
-                // add the id of the overlapping tutorial
-                slot_mask.add(id);
-            }            
-        }
-
-        // find the Unwanted slots #################################################################################################################################
-        for(Integer slot_id: tutorial.unwanted)
-        {
-            slot_mask.add(slot_id);
-        }
-
-        // filter the array list
-        int num_slots = env.tut_slots_array.length - slot_mask.size();
-        if(num_slots <= 0)
-        {
+        String dayStr = elements[0].trim();
+        String timeStr = elements[1].trim();
+        
+        Integer day = DAY_MAPPING.get(dayStr);
+        if (day == null) {
             return null;
         }
 
-        int[] valid_slots = new int[num_slots];
-        int j = 0;
-        for(int i = 0; i < env.tut_slots_array.length; i++)
-        {
-            if(!slot_mask.contains(i))
-            {
-                valid_slots[j] = i;
-                j++;
-            }
+        String[] timeParts = timeStr.split(":");
+        if (timeParts.length != 2) {
+            return null;
         }
 
-        return valid_slots;
+        try {
+            int hour = Integer.parseInt(timeParts[0].trim());
+            int minute = Integer.parseInt(timeParts[1].trim());
+            int max = Integer.parseInt(elements[2].trim());
+            int min = Integer.parseInt(elements[3].trim());
+            int almax = Integer.parseInt(elements[4].trim());
+
+            String name = dayStr + "," + timeStr;
+            return new Slot(-1, day, hour, minute, name, max, min, almax);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**
-     * prints the assignments of lectures and tutorials to slots in a nice format
-     * @param pr the problem to print
-     * @param env the environment variables
+     * Processes lecture slots into environment arrays
      */
-    public static void PrintProblem(Problem pr, Environment env)
-    {
-        // create an array for holding the data
-        ArrayList<OutputFormat> output = new ArrayList<OutputFormat>();
-
-        // parse through the lectures of the problem and get the lecture names and slot assignments
-        for(int i = 0; i < env.num_lectures; i++)
-        {
-            OutputFormat lec_out = new OutputFormat();
-
-            // get the slot string
-            if(pr.lectures[i] == -1)
-            {
-                continue;
+    private static void processLectureSlots(Environment env) {
+        int index = 0;
+        for (Slot slot : env.lectureSlots.values()) {
+            if (slot.getLecHash() == 2100) { // Tuesday 11:00 AM
+                System.out.println("INPUT NOTICE: Tuesday 11:00 am lecture found");
+                env.tue11SlotId = index;
             }
-            
-            // get the name of the slot
-            lec_out.slot_name = env.lec_slots_array[pr.lectures[i]].name;
-            // get the name of the lecture
-            lec_out.name = env.lectures[i].name;
-            // add this to the output array
-            output.add(lec_out);
+            env.lecSlotsArray[index] = slot;
+            slot.setId(index);
+            index++;
         }
-
-        // parse through the tutorials of the problem and get the tutorial names and slot assignments
-        for(int i = 0; i < env.num_tutorials; i++)
-        {
-            OutputFormat tut_out = new OutputFormat();
-
-            // get the slot string
-            if(pr.tutorials[i] == -1)
-            {
-                continue;
-            }
-            
-            // get the name of the slot
-            tut_out.slot_name = env.tut_slots_array[pr.tutorials[i]].name;
-            // get the name of the lecture
-            tut_out.name = env.tutorials[i].name;
-            // add this to the output array
-            output.add(tut_out);
-        }
-    
-        // sort the output
-        Collections.sort(output, new LecTutSorter());
-
-        for(int i = 0; i < output.size(); i++)
-        {
-            String temp = String.format("%-23s: %s", output.get(i).name,output.get(i).slot_name);
-            System.out.println(temp);
-        }
-    } 
-
-
-    // hard constraint compliance
+    }
 
     /**
-     * do the slots meet the hard constraints on capacity and active learning capacity
-     * @param pr the problem to analyze
-     * @param env the environment to analyze
+     * Processes tutorial slots into environment arrays
      */
-    public static boolean SlotCapacityCompliance(Problem pr, Environment env)
-    {
-        // determine the number of assignments to each slot
-        int[] fill_lec_slots = new int[env.lec_slots_array.length];
-        int[] fill_tut_slots = new int[env.tut_slots_array.length];
-        int[] fill_lec_slots_al = new int[env.lec_slots_array.length];
-        int[] fill_tut_slots_al = new int[env.tut_slots_array.length];
-
-        // initialize the arrays
-        for(int i= 0; i < fill_lec_slots.length; i++)
-        {
-            fill_lec_slots[i] = 0;
-            fill_lec_slots_al[i] = 0;
-        }
-
-        for(int i = 0; i < fill_tut_slots.length; i++)
-        {
-            fill_tut_slots[i] = 0;
-            fill_tut_slots_al[i] = 0;
-        }
-
-        for(int i = 0; i < pr.lectures.length; i++)
-        {
-            // slot id
-            int slot_id = pr.lectures[i];
-
-            // add to the count
-            fill_lec_slots[slot_id] += 1;
-            // is this an active learning lecture
-            if(env.lectures[i].is_al)
-            {
-                fill_lec_slots_al[slot_id] += 1;
-            }
-        }
-
-
-        for(int i = 0; i < pr.tutorials.length; i++)
-        {
-            // slot id
-            int slot_id = pr.tutorials[i];
-
-            // add to the count
-            fill_tut_slots[slot_id] += 1;
-            // is this an active learning lecture
-            if(env.tutorials[i].is_al)
-            {
-                fill_tut_slots_al[slot_id] += 1;
-            }
-        }
-
-        // verify that they are not over capacity
-        for(int i = 0; i < fill_lec_slots.length; i++)
-        {
-            Slot s = env.lec_slots_array[i];
+    private static void processTutorialSlots(Environment env) {
+        int index = 0;
+        for (Slot slot : env.tutorialSlots.values()) {
+            env.tutSlotsArray[index] = slot;
             
-
-            if(s.max < fill_lec_slots[i])
-            {
-                System.out.println(String.format("lec slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_lec_slots[i], fill_lec_slots_al[i]));
-                // over flow
-                return false;
-            }
-
-            if(s.almax < fill_lec_slots_al[i])
-            {
-                System.out.println(String.format("lec slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_lec_slots[i], fill_lec_slots_al[i]));
-                // active learning over flow
-                return false;
-            }
-        }
-
-
-        for(int i = 0; i < fill_tut_slots.length; i++)
-        {
-            Slot s = env.tut_slots_array[i];
+            // Find overlapping lecture slots
+            List<Integer> lecSlots = slot.getOverlappingLectureHashesForTutorial().stream()
+                .filter(hash -> env.lectureSlots.containsKey(hash))
+                .map(hash -> env.lectureSlots.get(hash).getId())
+                .collect(Collectors.toList());
             
-
-            if(s.max < fill_tut_slots[i])
-            {
-                System.out.println(String.format("tut slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_tut_slots[i], fill_tut_slots_al[i]));
-                // over flow
-                return false;
-            }
-
-            if(s.almax < fill_tut_slots_al[i])
-            {
-                System.out.println(String.format("tut slot: %2d, capacity: %2d, al capacity: %2d, fill %2d, al fill %2d",i, s.max, s.almax, fill_tut_slots[i], fill_tut_slots_al[i]));
-                // active learning over flow
-                return false;
-            }
+            env.tutSlotLecSlot[index] = lecSlots.stream().mapToInt(i -> i).toArray();
+            slot.setId(index);
+            index++;
         }
+    }
 
+    /**
+     * Creates mappings between lecture and tutorial slots
+     */
+    private static void createSlotMappings(Environment env) {
+        List<int[]> lecToTutList = new ArrayList<>();
+        
+        for (Slot lectureSlot : env.lecSlotsArray) {
+            List<Integer> tutSlots = lectureSlot.getOverlappingTutorialHashesForLecture().stream()
+                .filter(hash -> env.tutorialSlots.containsKey(hash))
+                .map(hash -> env.tutorialSlots.get(hash).getId())
+                .collect(Collectors.toList());
+            
+            lecToTutList.add(tutSlots.stream().mapToInt(i -> i).toArray());
+        }
+        
+        env.lecSlotTutSlot = lecToTutList.toArray(new int[0][]);
+    }
+
+    /**
+     * Container for course data during parsing
+     */
+    private static class CourseDataContainer {
+        Map<String, Map<Integer, LectureData>> lectureMap = new HashMap<>();
+        boolean cpsc413Found = false;
+        boolean cpsc351Found = false;
+    }
+
+    /**
+     * Parses all course data (lectures and tutorials)
+     */
+    private static CourseDataContainer parseCourseData(BufferedReader reader) throws IOException {
+        CourseDataContainer container = new CourseDataContainer();
+        
+        // Parse lectures
+        if (!parseLectureSection(reader, container)) {
+            return null;
+        }
+        
+        // Parse tutorials
+        if (!parseTutorialSection(reader, container)) {
+            return null;
+        }
+        
+        return container;
+    }
+
+    /**
+     * Handles special courses (CPSC 413 and CPSC 351)
+     */
+    private static void handleSpecialCourses(CourseDataContainer container) {
+        if (container.lectureMap.containsKey("CPSC 413")) {
+            System.out.println("INPUT NOTICE: CPSC 413 found");
+            container.cpsc413Found = true;
+            addSpecialTutorial(container, "CPSC 413", "CPSC 913 TUT 01");
+        }
+        
+        if (container.lectureMap.containsKey("CPSC 351")) {
+            System.out.println("INPUT NOTICE: CPSC 351 found");
+            container.cpsc351Found = true;
+            addSpecialTutorial(container, "CPSC 351", "CPSC 851 TUT 01");
+        }
+    }
+
+    /**
+     * Adds a special tutorial for a course
+     */
+    private static void addSpecialTutorial(CourseDataContainer container, String course, String tutName) {
+        TutorialData tut = new TutorialData();
+        tut.courseDescriptor = course;
+        tut.tutNum = 0;
+        tut.isEvening = false;
+        tut.isAl = false;
+        tut.useSection = false;
+        tut.name = tutName;
+
+        Map<Integer, LectureData> courseLectures = container.lectureMap.get(course);
+        if (!courseLectures.isEmpty()) {
+            LectureData firstLecture = courseLectures.values().iterator().next();
+            tut.lecNum = firstLecture.lecNum;
+            firstLecture.tutorials.add(tut);
+        }
+    }
+
+    /**
+     * Processes all course data into the environment
+     */
+    private static boolean processAllCourseData(Environment env, CourseDataContainer container) {
+        // Count total lectures and tutorials
+        env.numLectures = container.lectureMap.values().stream()
+            .mapToInt(Map::size)
+            .sum();
+        
+        env.numTutorials = container.lectureMap.values().stream()
+            .flatMap(m -> m.values().stream())
+            .mapToInt(lec -> lec.tutorials.size())
+            .sum();
+
+        // Convert to arrays
+        env.tutorials = new Tutorial[env.numTutorials];
+        env.lectures = new Lecture[env.numLectures];
+        
+        List<Integer> lec5xxList = new ArrayList<>();
+        
+        int tutorialId = 0;
+        int lectureId = 0;
+        int sectionId = 0;
+        
+        for (Map<Integer, LectureData> courseLectures : container.lectureMap.values()) {
+            int[] sectionLectureIds = new int[courseLectures.size()];
+            int lectureIndex = 0;
+            
+            for (LectureData lectureData : courseLectures.values()) {
+                // Record 5xx lectures
+                if (lectureData.is5xx) {
+                    lec5xxList.add(lectureId);
+                }
+                
+                // Convert tutorials
+                for (TutorialData tutData : lectureData.tutorials) {
+                    tutData.id = tutorialId;
+                    env.tutorials[tutorialId] = tutData.convertToTutorial(tutorialId, sectionId, lectureId);
+                    tutorialId++;
+                }
+                
+                // Convert lecture
+                lectureData.id = lectureId;
+                sectionLectureIds[lectureIndex] = lectureId;
+                env.lectures[lectureId] = lectureData.convertToLecture(lectureId, sectionId);
+                lectureId++;
+                lectureIndex++;
+            }
+            
+            env.sections.put(sectionId, sectionLectureIds);
+            sectionId++;
+        }
+        
+        // Store 5xx lectures
+        env.lectures5xx = lec5xxList.stream().mapToInt(i -> i).toArray();
+        
+        // Create tutorial mappings
+        createTutorialMappings(env);
+        
         return true;
     }
 
     /**
-     * check if the lectures do not overlap any of their tutorials
-     * @param pr the problem to analyze
-     * @param env the environment to analyze
+     * Creates tutorial-to-lecture mappings
      */
-    public static boolean LectureNoOverlapTutorials(Problem pr, Environment env)
-    {
-        // go through every lecture and see if any of its tutorials have overlapping times
-        for(int i = 0; i < pr.lectures.length; i++)
-        {
-            // get the current lecture
-            Lecture lec = env.lectures[i];
+    private static void createTutorialMappings(Environment env) {
+        List<List<Integer>> tutorialMap = new ArrayList<>(env.numLectures);
+        for (int i = 0; i < env.numLectures; i++) {
+            tutorialMap.add(new ArrayList<>());
+        }
+        
+        for (int i = 0; i < env.tutorials.length; i++) {
+            Tutorial tutorial = env.tutorials[i];
+            
+            if (tutorial.section != -1) {
+                int[] sectionLectures = env.sections.get(tutorial.section);
+                tutorial.parentLectures = sectionLectures;
+                
+                for (int lectureId : sectionLectures) {
+                    tutorialMap.get(lectureId).add(i);
+                }
+            } else {
+                tutorialMap.get(tutorial.parentLectures[0]).add(i);
+            }
+        }
+        
+        // Assign tutorials to lectures
+        for (int i = 0; i < env.numLectures; i++) {
+            List<Integer> tutorialIds = tutorialMap.get(i);
+            env.lectures[i].tutorials = tutorialIds.stream().mapToInt(Integer::intValue).toArray();
+        }
+    }
 
-            // the slot that the lecture is assigned
-            Slot lec_slot = env.lec_slots_array[pr.lectures[i]];
+    /**
+     * Parses constraints (not compatible, unwanted, preferences, pairs)
+     */
+    private static boolean parseConstraints(BufferedReader reader, Environment env, 
+                                          CourseDataContainer container) throws IOException {
+        return parseNotCompatible(reader, env, container) &&
+               parseUnwanted(reader, env, container) &&
+               parsePreferences(reader, env, container) &&
+               parsePairs(reader, env, container);
+    }
 
-            // for each child tutorial check its assignment
-            for(int j = 0; j < lec.tutorials.length; j++)
-            {
-                // get the assigned slot of this tutorial (look up the tutorial id using j, then look up the slot id using the tutorial id)
-                Slot tut_slot = env.tut_slots_array[pr.tutorials[lec.tutorials[j]]];
+    /**
+     * Applies partial assignments to the starting state
+     */
+    private static boolean applyPartialAssignments(BufferedReader reader, Environment env, 
+                                                  Problem s0, CourseDataContainer container) throws IOException {
+        List<AssignmentPair> partialAssignLec = new ArrayList<>();
+        List<AssignmentPair> partialAssignTut = new ArrayList<>();
+        
+        if (!parsePartialAssignments(reader, env, container, partialAssignTut, partialAssignLec)) {
+            return false;
+        }
+        
+        // Apply special constraints
+        applySpecialConstraints(env, container, partialAssignTut);
+        
+        // Create initial problem
+        s0.setupProblem(env.numLectures, env.numTutorials, 
+                       env.lecSlotsArray.length, env.tutSlotsArray.length);
+        
+        // Apply partial assignments
+        return applyAllAssignments(s0, env, partialAssignLec, partialAssignTut);
+    }
 
-                if(AreLecTutSlotsOverlapping(lec_slot, tut_slot))
-                {
-                    lec.PrintData();
-                    lec_slot.PrintSlot();
-                    System.out.println("above lecture overlaps with tutorial: " + env.tutorials[lec.tutorials[j]].name);
-                    tut_slot.PrintSlot();
-                    // overlap found, return false
-                    return false;
+    /**
+     * Applies special constraints for CPSC 413/351
+     */
+    private static void applySpecialConstraints(Environment env, CourseDataContainer container, 
+                                               List<AssignmentPair> partialAssignTut) {
+        if (container.cpsc351Found) {
+            applyCpsc351Constraints(env, container, partialAssignTut);
+        }
+        
+        if (container.cpsc413Found) {
+            applyCpsc413Constraints(env, container, partialAssignTut);
+        }
+    }
+
+    /**
+     * Helper method to skip to a specific heading
+     */
+    private static void skipToHeading(BufferedReader reader, String heading) throws IOException {
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (line.contains(heading)) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Parses the dataset name
+     */
+    private static String parseDatasetName(BufferedReader reader) throws IOException {
+        skipToHeading(reader, HEADINGS[0]);
+        
+        String line;
+        while ((line = reader.readLine()) != null && line.trim().isEmpty()) {
+            // Skip empty lines
+        }
+        
+        return line != null ? line.trim() : null;
+    }
+
+    // Additional parsing methods would follow similar patterns...
+    // Due to length constraints, I've shown the main structure and key improvements.
+
+    /**
+     * Data class for assignment pairs
+     */
+    private static class AssignmentPair {
+        boolean isLecture;
+        int id;
+        int slotId;
+    }
+    /**
+     * Parses the lecture section from the file
+     */
+    private static boolean parseLectureSection(BufferedReader reader, 
+                                              CourseDataContainer container) throws IOException {
+        skipToHeading(reader, HEADINGS[3]);
+        
+        String line = reader.readLine();
+        while (line != null && !line.contains(HEADINGS[4])) {
+            if (!line.trim().isEmpty()) {
+                LectureData lectureData = parseLectureLine(line);
+                if (lectureData != null) {
+                    container.lectureMap
+                        .computeIfAbsent(lectureData.courseDescriptor, k -> new HashMap<>())
+                        .putIfAbsent(lectureData.lecNum, lectureData);
+                } else {
+                    System.err.println("INPUT WARNING: (Lectures) Invalid information in line: " + line);
+                }
+            }
+            line = reader.readLine();
+        }
+        
+        return line != null && line.contains(HEADINGS[4]);
+    }
+
+    /**
+     * Parses a single lecture line
+     */
+    private static LectureData parseLectureLine(String line) {
+        String[] elements = line.split(",", 3);
+        if (elements.length < 3) {
+            return null;
+        }
+
+        try {
+            LectureData lecture = new LectureData();
+            lecture.name = elements[0].trim();
+            
+            // Parse course descriptor and lecture number
+            String[] nameParts = elements[0].split(LECTURE_MARKER);
+            if (nameParts.length != 2) {
+                return null;
+            }
+            
+            lecture.courseDescriptor = nameParts[0].trim();
+            
+            String lecNumStr = nameParts[1].trim().split("\\s+")[0];
+            lecture.lecNum = Integer.parseInt(lecNumStr);
+            
+            // Check for evening lecture
+            lecture.isEvening = lecNumStr.startsWith("9");
+            
+            // Check for 500-level course
+            String[] courseParts = lecture.courseDescriptor.split("\\s+");
+            if (courseParts.length >= 2) {
+                lecture.is5xx = courseParts[1].startsWith("5");
+            }
+            
+            // Parse AL flag
+            lecture.isAl = elements[2].trim().equalsIgnoreCase(TRUE_VALUE);
+            
+            return lecture;
+        } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parses the tutorial section from the file
+     */
+    private static boolean parseTutorialSection(BufferedReader reader, 
+                                               CourseDataContainer container) throws IOException {
+        String line = reader.readLine();
+        while (line != null && !line.contains(HEADINGS[5])) {
+            if (!line.trim().isEmpty()) {
+                TutorialData tutorialData = parseTutorialLine(line);
+                if (tutorialData != null) {
+                    addTutorialToContainer(container, tutorialData);
+                } else {
+                    System.err.println("INPUT WARNING: (Tutorials) Invalid information in line: " + line);
+                }
+            }
+            line = reader.readLine();
+        }
+        
+        return line != null && line.contains(HEADINGS[5]);
+    }
+
+    /**
+     * Adds a tutorial to the container, linking it to its lecture
+     */
+    private static void addTutorialToContainer(CourseDataContainer container, TutorialData tutorial) {
+        Map<Integer, LectureData> courseLectures = container.lectureMap.get(tutorial.courseDescriptor);
+        if (courseLectures == null) {
+            System.err.println("INPUT WARNING: Tutorial without corresponding lecture: " + tutorial.courseDescriptor);
+            return;
+        }
+        
+        LectureData lecture = courseLectures.get(tutorial.lecNum);
+        if (lecture == null) {
+            System.err.println("INPUT WARNING: Tutorial without corresponding lecture number: " + 
+                             tutorial.courseDescriptor + " LEC " + tutorial.lecNum);
+            return;
+        }
+        
+        lecture.tutorials.add(tutorial);
+    }
+
+    /**
+     * Parses a single tutorial line
+     */
+    private static TutorialData parseTutorialLine(String line) {
+        String[] elements = line.split(",", 3);
+        if (elements.length < 3) {
+            return null;
+        }
+
+        try {
+            TutorialData tutorial = new TutorialData();
+            tutorial.name = elements[0].trim();
+            
+            // Parse course descriptor and numbers
+            if (tutorial.name.contains(TUTORIAL_MARKER)) {
+                parseTutorialWithMarker(tutorial, TUTORIAL_MARKER);
+            } else if (tutorial.name.contains(LAB_MARKER)) {
+                parseTutorialWithMarker(tutorial, LAB_MARKER);
+            } else {
+                return null;
+            }
+            
+            // Parse AL flag
+            tutorial.isAl = elements[2].trim().equalsIgnoreCase(TRUE_VALUE);
+            
+            return tutorial;
+        } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parses tutorial information with a specific marker (TUT or LAB)
+     */
+    private static void parseTutorialWithMarker(TutorialData tutorial, String marker) {
+        String[] parts = tutorial.name.split(marker);
+        String leftPart = parts[0].trim();
+        String rightPart = parts[1].trim();
+        
+        // Parse tutorial number
+        tutorial.tutNum = Integer.parseInt(rightPart.split("\\s+")[0]);
+        
+        // Parse lecture information if present
+        if (leftPart.contains(LECTURE_MARKER)) {
+            String[] lecParts = leftPart.split(LECTURE_MARKER);
+            tutorial.courseDescriptor = lecParts[0].trim();
+            tutorial.lecNum = Integer.parseInt(lecParts[1].trim().split("\\s+")[0]);
+            tutorial.isEvening = lecParts[1].trim().startsWith("9");
+            tutorial.useSection = false;
+        } else {
+            tutorial.courseDescriptor = leftPart;
+            tutorial.lecNum = 1; // Default
+            tutorial.useSection = true;
+        }
+    }
+
+    /**
+     * Parses the "Not Compatible" section
+     */
+    private static boolean parseNotCompatible(BufferedReader reader, Environment env,
+                                             CourseDataContainer container) throws IOException {
+        String line = reader.readLine();
+        while (line != null && !line.contains(HEADINGS[6])) {
+            if (!line.trim().isEmpty()) {
+                Pair pair = parsePairLine(line, container);
+                if (pair != null) {
+                    applyNotCompatibleConstraint(env, pair);
+                } else {
+                    System.err.println("INPUT WARNING: (Not Compatible) Invalid information in line: " + line);
+                }
+            }
+            line = reader.readLine();
+        }
+        
+        return line != null && line.contains(HEADINGS[6]);
+    }
+
+    /**
+     * Parses a pair line for not-compatible constraints
+     */
+    private static Pair parsePairLine(String line, CourseDataContainer container) {
+        String[] elements = line.split(",");
+        if (elements.length != 2) {
+            return null;
+        }
+        
+        try {
+            Pair pair = new Pair();
+            pair.id1 = parseEntityId(elements[0].trim(), container);
+            pair.id2 = parseEntityId(elements[1].trim(), container);
+            
+            if (pair.id1 == -1 || pair.id2 == -1) {
+                return null;
+            }
+            
+            pair.isLec1 = !(elements[0].contains(TUTORIAL_MARKER) || elements[0].contains(LAB_MARKER));
+            pair.isLec2 = !(elements[1].contains(TUTORIAL_MARKER) || elements[1].contains(LAB_MARKER));
+            
+            return pair;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parses an entity ID from a string
+     */
+    private static int parseEntityId(String entityStr, CourseDataContainer container) {
+        if (entityStr.contains(LECTURE_MARKER)) {
+            return parseLectureId(entityStr, container);
+        } else if (entityStr.contains(TUTORIAL_MARKER) || entityStr.contains(LAB_MARKER)) {
+            return parseTutorialId(entityStr, container);
+        }
+        return -1;
+    }
+
+    /**
+     * Applies a not-compatible constraint to the environment
+     */
+    private static void applyNotCompatibleConstraint(Environment env, Pair pair) {
+        if (pair.isLec1) {
+            if (pair.isLec2) {
+                env.lectures[pair.id1].notCompatibleLec.add(pair.id2);
+                env.lectures[pair.id2].notCompatibleLec.add(pair.id1);
+            } else {
+                env.lectures[pair.id1].notCompatibleTut.add(pair.id2);
+                env.tutorials[pair.id2].notCompatibleLec.add(pair.id1);
+            }
+        } else {
+            if (pair.isLec2) {
+                env.tutorials[pair.id1].notCompatibleLec.add(pair.id2);
+                env.lectures[pair.id2].notCompatibleTut.add(pair.id1);
+            } else {
+                env.tutorials[pair.id1].notCompatibleTut.add(pair.id2);
+                env.tutorials[pair.id2].notCompatibleTut.add(pair.id1);
+            }
+        }
+    }
+
+    /**
+     * Parses the "Unwanted" section
+     */
+    private static boolean parseUnwanted(BufferedReader reader, Environment env,
+                                        CourseDataContainer container) throws IOException {
+        String line = reader.readLine();
+        while (line != null && !line.contains(HEADINGS[7])) {
+            if (!line.trim().isEmpty()) {
+                AssignmentPair pair = parseAssignmentLine(line, container);
+                if (pair != null) {
+                    applyUnwantedConstraint(env, pair);
+                } else {
+                    System.err.println("INPUT WARNING: (Unwanted) Invalid information in line: " + line);
+                }
+            }
+            line = reader.readLine();
+        }
+        
+        return line != null && line.contains(HEADINGS[7]);
+    }
+
+    /**
+     * Parses an assignment line (for unwanted or preferences)
+     */
+    private static AssignmentPair parseAssignmentLine(String line, CourseDataContainer container) {
+        String[] elements = line.split(",", 2);
+        if (elements.length != 2) {
+            return null;
+        }
+        
+        try {
+            AssignmentPair pair = new AssignmentPair();
+            String entityStr = elements[0].trim();
+            String slotStr = elements[1].trim();
+            
+            // Parse entity
+            if (entityStr.contains(LECTURE_MARKER)) {
+                pair.isLecture = true;
+                pair.id = parseLectureId(entityStr, container);
+            } else {
+                pair.isLecture = false;
+                pair.id = parseTutorialId(entityStr, container);
+            }
+            
+            if (pair.id == -1) {
+                return null;
+            }
+            
+            // Parse slot
+            Slot slot = parseBasicSlot(slotStr);
+            if (slot == null) {
+                return null;
+            }
+            
+            pair.slotId = pair.isLecture ? slot.getLecHash() : slot.getTutHash();
+            return pair;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Parses a basic slot from a string
+     */
+    private static Slot parseBasicSlot(String slotStr) {
+        String[] elements = slotStr.split(",");
+        if (elements.length < 2) {
+            return null;
+        }
+        
+        String dayStr = elements[0].trim();
+        String timeStr = elements[1].trim();
+        
+        Integer day = DAY_MAPPING.get(dayStr);
+        if (day == null) {
+            return null;
+        }
+        
+        String[] timeParts = timeStr.split(":");
+        if (timeParts.length != 2) {
+            return null;
+        }
+        
+        try {
+            int hour = Integer.parseInt(timeParts[0].trim());
+            int minute = Integer.parseInt(timeParts[1].trim());
+            return new Slot(-1, day, hour, minute, dayStr + "," + timeStr, 0, 0, 0);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Applies an unwanted constraint
+     */
+    private static void applyUnwantedConstraint(Environment env, AssignmentPair pair) {
+        if (pair.isLecture) {
+            Slot slot = findSlotByHash(env.lectureSlots, pair.slotId);
+            if (slot != null) {
+                env.lectures[pair.id].unwanted.add(slot.getId());
+            }
+        } else {
+            Slot slot = findSlotByHash(env.tutorialSlots, pair.slotId);
+            if (slot != null) {
+                env.tutorials[pair.id].unwanted.add(slot.getId());
+            }
+        }
+    }
+
+    /**
+     * Parses the "Preferences" section
+     */
+    private static boolean parsePreferences(BufferedReader reader, Environment env,
+                                          CourseDataContainer container) throws IOException {
+        String line = reader.readLine();
+        while (line != null && !line.contains(HEADINGS[8])) {
+            if (!line.trim().isEmpty()) {
+                Preference preference = parsePreferenceLine(line, container);
+                if (preference != null) {
+                    applyPreference(env, preference);
+                } else {
+                    System.err.println("INPUT WARNING: (Preferences) Invalid information in line: " + line);
+                }
+            }
+            line = reader.readLine();
+        }
+        
+        return line != null && line.contains(HEADINGS[8]);
+    }
+
+    /**
+     * Data class for preferences
+     */
+    private static class Preference {
+        boolean isLecture;
+        int id;
+        int slotId;
+        int value;
+    }
+
+    /**
+     * Parses a preference line
+     */
+    private static Preference parsePreferenceLine(String line, CourseDataContainer container) {
+        String[] elements = line.split(",", 4);
+        if (elements.length != 4) {
+            return null;
+        }
+        
+        try {
+            Preference preference = new Preference();
+            
+            // Parse slot
+            Slot slot = parseBasicSlot(elements[0].trim() + "," + elements[1].trim());
+            if (slot == null) {
+                return null;
+            }
+            
+            // Parse entity
+            String entityStr = elements[2].trim();
+            if (entityStr.contains(LECTURE_MARKER)) {
+                preference.isLecture = true;
+                preference.id = parseLectureId(entityStr, container);
+                preference.slotId = slot.getLecHash();
+            } else {
+                preference.isLecture = false;
+                preference.id = parseTutorialId(entityStr, container);
+                preference.slotId = slot.getTutHash();
+            }
+            
+            if (preference.id == -1) {
+                return null;
+            }
+            
+            // Parse preference value
+            preference.value = Integer.parseInt(elements[3].trim());
+            
+            return preference;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Applies a preference to the environment
+     */
+    private static void applyPreference(Environment env, Preference preference) {
+        Slot slot = findSlotByHash(
+            preference.isLecture ? env.lectureSlots : env.tutorialSlots, 
+            preference.slotId
+        );
+        
+        if (slot != null) {
+            int slotId = slot.getId();
+            if (preference.isLecture) {
+                env.lectures[preference.id].preferences.put(slotId, preference.value);
+            } else {
+                env.tutorials[preference.id].preferences.put(slotId, preference.value);
+            }
+        }
+    }
+
+    /**
+     * Parses the "Pairs" section
+     */
+    private static boolean parsePairs(BufferedReader reader, Environment env,
+                                     CourseDataContainer container) throws IOException {
+        List<Pair> pairs = new ArrayList<>();
+        String line = reader.readLine();
+        
+        while (line != null && !line.contains(HEADINGS[9])) {
+            if (!line.trim().isEmpty()) {
+                Pair pair = parsePairLine(line, container);
+                if (pair != null) {
+                    pairs.add(pair);
+                } else {
+                    System.err.println("INPUT WARNING: (Pairs) Invalid information in line: " + line);
+                }
+            }
+            line = reader.readLine();
+        }
+        
+        if (line == null || !line.contains(HEADINGS[9])) {
+            return false;
+        }
+        
+        env.pairs = pairs.toArray(new Pair[0]);
+        return true;
+    }
+
+    /**
+     * Parses the "Partial Assignments" section
+     */
+    private static boolean parsePartialAssignments(BufferedReader reader, Environment env,
+                                                  CourseDataContainer container,
+                                                  List<AssignmentPair> partialAssignTut,
+                                                  List<AssignmentPair> partialAssignLec) throws IOException {
+        String line = reader.readLine();
+        while (line != null) {
+            if (!line.trim().isEmpty()) {
+                AssignmentPair pair = parseAssignmentLine(line, container);
+                if (pair != null) {
+                    if (pair.isLecture) {
+                        Slot slot = findSlotByHash(env.lectureSlots, pair.slotId);
+                        if (slot != null) {
+                            pair.slotId = slot.getId();
+                            partialAssignLec.add(pair);
+                        }
+                    } else {
+                        Slot slot = findSlotByHash(env.tutorialSlots, pair.slotId);
+                        if (slot != null) {
+                            pair.slotId = slot.getId();
+                            partialAssignTut.add(pair);
+                        }
+                    }
+                } else {
+                    System.err.println("INPUT WARNING: (Partial Assignments) Invalid information in line: " + line);
+                }
+            }
+            line = reader.readLine();
+        }
+        
+        return true;
+    }
+
+    /**
+     * Applies special constraints for CPSC 351
+     */
+    private static void applyCpsc351Constraints(Environment env, CourseDataContainer container,
+                                               List<AssignmentPair> partialAssignTut) {
+        applySpecialCourseConstraints(env, container, "CPSC 351", "CPSC 851 TUT 01", partialAssignTut);
+    }
+
+    /**
+     * Applies special constraints for CPSC 413
+     */
+    private static void applyCpsc413Constraints(Environment env, CourseDataContainer container,
+                                               List<AssignmentPair> partialAssignTut) {
+        applySpecialCourseConstraints(env, container, "CPSC 413", "CPSC 913 TUT 01", partialAssignTut);
+    }
+
+    /**
+     * Applies special constraints for a course
+     */
+    private static void applySpecialCourseConstraints(Environment env, CourseDataContainer container,
+                                                     String courseCode, String tutorialName,
+                                                     List<AssignmentPair> partialAssignTut) {
+        // Find tutorial
+        int tutorialId = findTutorialByName(env.tutorials, tutorialName);
+        if (tutorialId == -1) {
+            System.err.println("PARSE ERROR: " + courseCode + " exists but " + tutorialName + " not found");
+            return;
+        }
+        
+        // Find Tuesday 18:00 slot
+        int slotId = findSlotByTime(env.tutSlotsArray, Slot.TUESDAY, 18, 0);
+        if (slotId == -1) {
+            System.err.println("PARSE ERROR: " + courseCode + " exists but TU 18:00 slot not found");
+            return;
+        }
+        
+        // Add partial assignment
+        AssignmentPair assignment = new AssignmentPair();
+        assignment.isLecture = false;
+        assignment.id = tutorialId;
+        assignment.slotId = slotId;
+        partialAssignTut.add(assignment);
+        
+        // Add incompatibilities
+        Map<Integer, LectureData> courseLectures = container.lectureMap.get(courseCode);
+        if (courseLectures != null) {
+            for (LectureData lectureData : courseLectures.values()) {
+                // Incompatible with lecture
+                env.lectures[lectureData.id].notCompatibleTut.add(tutorialId);
+                env.tutorials[tutorialId].notCompatibleLec.add(lectureData.id);
+                
+                // Incompatible with other tutorials
+                for (TutorialData tutorialData : lectureData.tutorials) {
+                    if (tutorialData.id != tutorialId) {
+                        env.tutorials[tutorialData.id].notCompatibleTut.add(tutorialId);
+                        env.tutorials[tutorialId].notCompatibleTut.add(tutorialData.id);
+                    }
                 }
             }
         }
+    }
 
-        // no overlaps found return true
+    /**
+     * Applies all partial assignments to the starting state
+     */
+    private static boolean applyAllAssignments(Problem s0, Environment env,
+                                              List<AssignmentPair> partialAssignLec,
+                                              List<AssignmentPair> partialAssignTut) {
+        // Apply lecture assignments
+        for (AssignmentPair pair : partialAssignLec) {
+            if (!assignLecture(s0, env, pair.id, pair.slotId)) {
+                return false;
+            }
+        }
+        
+        // Apply tutorial assignments
+        for (AssignmentPair pair : partialAssignTut) {
+            if (!assignTutorial(s0, env, pair.id, pair.slotId)) {
+                return false;
+            }
+        }
+        
+        System.out.println("Initial problem after partial assignments");
+        Functions.printProblem(s0, env);
+        
         return true;
     }
 
-
     /**
-     * are a lecture and tutorial slot overlapping
-     * @param lec_slot the lecture slot
-     * @param tut_slot the tutorial slot
+     * Assigns a lecture to a slot
      */
-    private static boolean AreLecTutSlotsOverlapping(Slot lec_slot, Slot tut_slot)
-    {
-        // cases are the days Monday, Tuesday, Friday
-        if((tut_slot.day == 0) || (tut_slot.day == 2))
-        {
-            // monday
-            // moday case lecture and tutorial slots a one hour long
-            if(lec_slot.lec_hash == tut_slot.lec_hash)
-            {
-                return true;
-            }
+    private static boolean assignLecture(Problem s0, Environment env, int lectureId, int slotId) {
+        int[] validSlots = Functions.validLectureSlots(env, lectureId, s0);
+        if (validSlots == null) {
+            System.err.println("Invalid partial assignment: assigning lecture: " + lectureId + ", to slot: " + slotId);
+            return false;
         }
-        else if((tut_slot.day == 1) || (tut_slot.day == 3))
-        {
-            // tuesday lecture slots are 90 min, tutorial slots are 60 min
-            if(((lec_slot.lec_hash + 90) > tut_slot.lec_hash) && ( (lec_slot.lec_hash + 90) <= (tut_slot.lec_hash + 50)) )
-            {
-                // lecture ends in the middle of a tutorial, thus overlapping
-                return true;
-            }
-
-            if(((tut_slot.lec_hash + 60) >(lec_slot.lec_hash)) && ((tut_slot.lec_hash + 60) <= (lec_slot.lec_hash + 90)))
-            {
-                // tutorial end in the middle of a lecture, thus overlapping
-                return true;
-            }
+        
+        if (Arrays.stream(validSlots).anyMatch(s -> s == slotId)) {
+            s0.assignLecture(lectureId, slotId, env.lectures[lectureId].isAl);
+            return true;
         }
-        else
-        {
-            // TGIF
-            // tuesday friday lecture slots are 60 min, tutorial slots are 120 min
-            if(((lec_slot.lec_hash + 60) > tut_slot.lec_hash) && ( (lec_slot.lec_hash + 60) <= (tut_slot.lec_hash + 120)) )
-            {
-                // lecture ends in the middle of a tutorial, thus overlapping
-                return true;
-            }
-
-            if(((tut_slot.lec_hash + 120) >(lec_slot.lec_hash)) && ((tut_slot.lec_hash + 120) <= (lec_slot.lec_hash + 60)))
-            {
-                // tutorial end in the middle of a lecture, thus overlapping
-                return true;
-            }
-
-        }
-
+        
+        System.err.println("Invalid partial assignment: assigning lecture: " + lectureId + ", to slot: " + slotId);
         return false;
     }
 
     /**
-     * check that there are no incompatible lectures/tutorials assigned to the same slots
-     * @param pr the problem to check
-     * @param env the environment to use
+     * Assigns a tutorial to a slot
      */
-    public static boolean NotCompatibleCheck(Problem pr, Environment env)
-    {
-        // go through every lecture and check that it does not overlap a not compatible lecture/tutorial
-        for(int i = 0; i < pr.lectures.length; i++)
-        {
-            // get the current lecture
-            Lecture lec = env.lectures[i];
-
-            // the slot that the lecture is assigned
-            Slot lec_slot = env.lec_slots_array[pr.lectures[i]];
-
-            // for each not compatible lecture
-            for(Integer l: lec.not_compatible_lec)
-            {
-                // get the assigned slot of this lecture
-                int l_slot = pr.lectures[l];
-
-                if(lec_slot.id == l_slot)
-                {
-                    lec.PrintData();
-                    lec_slot.PrintSlot();
-                    System.out.println("above lecture overlaps with lecture: " + env.lectures[l].name);
-                    env.lectures[l].PrintData();
-                    env.lec_slots_array[l_slot].PrintSlot();
-                    // overlap found, return false
-                    return false;
-                }
-            }
-
-            // for each not compatible tutorial
-            for(Integer t: lec.not_compatible_tut)
-            {
-                // get the assigned slot
-                Slot s = env.tut_slots_array[pr.tutorials[t]];
-
-                if(AreLecTutSlotsOverlapping(lec_slot, s))
-                {
-                    lec.PrintData();
-                    lec_slot.PrintSlot();
-                    System.out.println("above lecture overlaps with tutorial: ");
-                    env.tutorials[t].PrintData();
-                    s.PrintSlot();
-                    // overlap found, return false
-                    return false;
-                }
-            }
+    private static boolean assignTutorial(Problem s0, Environment env, int tutorialId, int slotId) {
+        int[] validSlots = Functions.validTutSlots(env, tutorialId, s0);
+        if (validSlots == null) {
+            System.err.println("Invalid partial assignment: assigning tutorial: " + tutorialId + ", to slot: " + slotId);
+            return false;
         }
-
-        // go through every tutorial and check that it does not overlap a not compatible tutorial/lecture
-        for(int i = 0; i < pr.tutorials.length; i++)
-        {
-            // get the current tutorial
-            Tutorial tut = env.tutorials[i];
-
-            // the slot that the tutorial is assigned
-            Slot tut_slot = env.tut_slots_array[pr.tutorials[i]];
-
-            // for each not compatible lecture
-            for(Integer l: tut.not_compatible_lec)
-            {
-                // get the assigned slot of this lecture
-                Slot l_slot = env.lec_slots_array[pr.lectures[l]];
-
-                if(AreLecTutSlotsOverlapping(l_slot, tut_slot))
-                {
-                    tut.PrintData();
-                    tut_slot.PrintSlot();
-                    System.out.println("above tutorial overlaps with lecture: ");
-                    env.lectures[l].PrintData();
-                    l_slot.PrintSlot();
-                    // overlap found, return false
-                    return false;
-                }
-            }
-
-            // for each not compatible tutorial
-            for(Integer t: tut.not_compatible_tut)
-            {
-                // get the assigned slot
-                int s = pr.tutorials[t];
-
-                if(tut_slot.id == s)
-                {
-                    tut.PrintData();
-                    tut_slot.PrintSlot();
-                    System.out.println("above tutorial overlaps with tutorial: ");
-                    env.tutorials[t].PrintData();
-                    env.tut_slots_array[s].PrintSlot();
-                    // overlap found, return false
-                    return false;
-                }
-            }
+        
+        if (Arrays.stream(validSlots).anyMatch(s -> s == slotId)) {
+            s0.assignTutorial(tutorialId, slotId, env.tutorials[tutorialId].isAl);
+            return true;
         }
-
-
-        // not conflicts found return true
-        return true;
+        
+        System.err.println("Invalid partial assignment: assigning tutorial: " + tutorialId + ", to slot: " + slotId);
+        return false;
     }
 
-    /**
-     * check that there are no lectures/tutorials assigned to unwanted slots
-     * @param pr the problem to check
-     * @param env the environment to use
-     */
-    public static boolean UnwantedCheck(Problem pr, Environment env)
-    {
-        // go through every lecture and check that it is not assigned an unwanted slot
-        for(int i = 0; i < pr.lectures.length; i++)
-        {
-            // get the current lecture
-            Lecture lec = env.lectures[i];
-
-            // the slot that the lecture is assigned
-            int lec_slot = pr.lectures[i];
-
-            // for each unwanted, ensure it is not the assigned slot
-            for(Integer unwanted: lec.unwanted)
-            {
-                if(unwanted == lec_slot)
-                {
-                    // overlap found, return false
-                    return false;
-                }
-            }
-        }
-
-
-        // go through every lecture and check that it is not assigned an unwanted slot
-        for(int i = 0; i < pr.tutorials.length; i++)
-        {
-            // get the current lecture
-            Tutorial tut = env.tutorials[i];
-
-            // the slot that the lecture is assigned
-            int tut_slot = pr.tutorials[i];
-
-            // for each unwanted, ensure it is not the assigned slot
-            for(Integer unwanted: tut.unwanted)
-            {
-                if(unwanted == tut_slot)
-                {
-                    // overlap found, return false
-                    return false;
-                }
-            }
-        }
-
-        return true;
+    // Helper methods
+    private static Slot findSlotByHash(Map<Integer, Slot> slots, int hash) {
+        return slots.get(hash);
     }
-
-
+    
+    private static int findTutorialByName(Tutorial[] tutorials, String name) {
+        for (int i = 0; i < tutorials.length; i++) {
+            if (tutorials[i].name.equals(name)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
+    private static int findSlotByTime(Slot[] slots, int day, int hour, int minute) {
+        for (int i = 0; i < slots.length; i++) {
+            if (slots[i].getDay() == day && slots[i].getHour() == hour && slots[i].getMinute() == minute) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
 
 }
-
-class LecTutSorter implements Comparator<OutputFormat>
-{
-    /**
-     * implements the sorting function for comparator
-     * @param a the first object to be compared.
-     * @param b the second object to be compared.
-     * @return : 1 if a should appear above b, 0 if they are equal, -1 otherwise
-     */
-    public int compare(OutputFormat a, OutputFormat b)
-    {
-        // sort on the name 
-        return a.name.compareTo(b.name);
-    }
-}
-
-/**
- * for holding the information needed to print out the assignments
- */
-class OutputFormat
-{
-    // the name of this lecture or Tutorial
-    String name = "";
-    // the name of this slot
-    String slot_name = "";
 }

@@ -9,6 +9,8 @@ import java.util.HashMap;
  */
 public class Lecture
 {
+    public static Object notCompatibleLec;
+    public static Object notCompatibleTut;
     int id; // the unique id of this lecture
     boolean is_al; // is this lecture an active learning lecture
     boolean is_5xx; // is this a 500 level lecture
