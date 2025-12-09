@@ -31,6 +31,7 @@ public class AndSearch
      */
     public boolean RunSearch(Problem sf)
     {
+<<<<<<< Updated upstream
         while (!tree.isEmpty() && env.iterations < env.max_iterations) {
             Problem top_problem = tree.poll();
             env.iterations++;
@@ -59,6 +60,146 @@ public class AndSearch
             expandNode(top_problem);
         }
         return false;
+=======
+        // Initialize timing and iteration counter
+        env.start_time = System.nanoTime();
+        env.iterations = 0;
+        
+        while (!tree.isEmpty() && 
+               env.iterations < env.max_iterations && 
+               (System.nanoTime() - env.start_time) < env.time_limit) {
+            
+            // get the problem from the top of the priority queue "tree"
+            Problem current = tree.poll();
+            env.iterations++;
+            env.current_time = System.nanoTime() - env.start_time;
+            
+            // Check if this is a complete solution
+            if (Functions.Solvable(current)) {
+                int score = Functions.Eval(current, env);
+                if (score < env.best_score) {
+                    env.best_score = score;
+                    // Copy the solution to return parameter
+                    copyProblem(current, sf);
+                    System.out.println("Found new best solution with score: " + score);
+                }
+                continue; // Move to next node in queue
+            }
+            
+            // Check if we should prune this branch
+            if (Functions.FBound(current, env)) {
+                continue; // Prune this branch
+            }
+            
+            // use ftrans to select the transition (select which lecture/tutorial to expand next)
+            int itemToExpand = selectItemToExpand(current);
+            if (itemToExpand == -1) {
+                continue; // No expandable items found
+            }
+            
+            boolean isLecture = itemToExpand < current.lectures.length;
+            int actualId = isLecture ? itemToExpand : itemToExpand - current.lectures.length;
+            
+            // use div to get the new problems
+            int[] validSlots;
+            if (isLecture) {
+                validSlots = Functions.ValidLectureSlots(env, actualId, current);
+            } else {
+                validSlots = Functions.ValidTutSlots(env, actualId, current);
+            }
+            
+            if (validSlots == null || validSlots.length == 0) {
+                continue; // No valid slots for this item
+            }
+            
+            // push the new problems onto the priority queue "tree"
+            for (int slotId : validSlots) {
+                Problem newProblem = createCopy(current);
+                newProblem.depth = current.depth + 1;
+                
+                if (isLecture) {
+                    newProblem.AssignLecture(actualId, slotId);
+                } else {
+                    newProblem.AssignTutorial(actualId, slotId);
+                }
+                
+                tree.add(newProblem);
+            }
+        }
+        
+        // Return whether we found a solution
+        boolean foundSolution = (env.best_score < 2000000000);
+        System.out.println("Search completed. Iterations: " + env.iterations + 
+                          ", Time: " + (env.current_time / 1000000000.0) + "s" +
+                          ", Found solution: " + foundSolution +
+                          ", Best score: " + (foundSolution ? env.best_score : "N/A"));
+        return foundSolution;
+    }
+    
+    /**
+     * Select which unassigned item to expand next (ftrans implementation)
+     * Priority: DIV9 lectures > active learning > everything else
+     */
+    private int selectItemToExpand(Problem current) {
+        // First pass: look for DIV9 lectures (evening lectures)
+        for (int i = 0; i < current.lectures.length; i++) {
+            if (current.lectures[i] == -1 && env.lectures[i].is_evng) {
+                return i; // Return lecture index
+            }
+        }
+        
+        // Second pass: look for active learning items
+        for (int i = 0; i < current.lectures.length; i++) {
+            if (current.lectures[i] == -1 && env.lectures[i].is_al) {
+                return i;
+            }
+        }
+        for (int i = 0; i < current.tutorials.length; i++) {
+            if (current.tutorials[i] == -1 && env.tutorials[i].is_al) {
+                return current.lectures.length + i; // Return offset index for tutorial
+            }
+        }
+        
+        // Third pass: any unassigned lecture
+        for (int i = 0; i < current.lectures.length; i++) {
+            if (current.lectures[i] == -1) {
+                return i;
+            }
+        }
+        
+        // Fourth pass: any unassigned tutorial
+        for (int i = 0; i < current.tutorials.length; i++) {
+            if (current.tutorials[i] == -1) {
+                return current.lectures.length + i;
+            }
+        }
+        
+        return -1; // No unassigned items found
+    }
+    
+    /**
+     * Create a deep copy of a problem
+     */
+    private Problem createCopy(Problem original) {
+        Problem copy = new Problem();
+        copy.SetupProblem(original.lectures.length, original.tutorials.length);
+        System.arraycopy(original.lectures, 0, copy.lectures, 0, original.lectures.length);
+        System.arraycopy(original.tutorials, 0, copy.tutorials, 0, original.tutorials.length);
+        copy.depth = original.depth;
+        copy.score = original.score;
+        return copy;
+    }
+    
+    /**
+     * Copy problem data to another problem instance
+     */
+    private void copyProblem(Problem source, Problem target) {
+        target.SetupProblem(source.lectures.length, source.tutorials.length);
+        System.arraycopy(source.lectures, 0, target.lectures, 0, source.lectures.length);
+        System.arraycopy(source.tutorials, 0, target.tutorials, 0, source.tutorials.length);
+        target.depth = source.depth;
+        target.score = source.score;
+>>>>>>> Stashed changes
     }
 
     /**
@@ -188,6 +329,7 @@ class FLeafComparator implements Comparator<Problem>
      */ 
     public int compare(Problem p1, Problem p2)
     {
+<<<<<<< Updated upstream
         // Sort on the following priority (from your project proposal):
         // 1: solvable nodes go first
         // 2: deepest nodes go first  
@@ -282,5 +424,24 @@ class FLeafComparator implements Comparator<Problem>
         }
         
         return discrepancy;
+=======
+        // 1: solvable nodes go first
+        boolean p1Solvable = Functions.Solvable(p1);
+        boolean p2Solvable = Functions.Solvable(p2);
+        if (p1Solvable && !p2Solvable) return -1;
+        if (!p1Solvable && p2Solvable) return 1;
+        
+        // 2: deepest nodes go first (more assignments = closer to solution)
+        int p1Depth = Functions.Depth(p1);
+        int p2Depth = Functions.Depth(p2);
+        if (p1Depth != p2Depth) {
+            return p2Depth - p1Depth; // Higher depth first
+        }
+        
+        // 3: lowest score according to MinBoundScore go first
+        
+        // 4: tie break on problem unique id (use hash code for consistency)
+        return Integer.compare(p1.hashCode(), p2.hashCode());
+>>>>>>> Stashed changes
     }
 }
