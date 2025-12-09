@@ -1,12 +1,20 @@
 package schedulesearch;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Comparator;
+import java.util.Collections;
 
 /**
  * The Environment class holds all the un-changing information for the search
  */ 
 public class Environment
 {
+    // the constraint ranking weights (best results come from 100, 10, 10)
+    int w_al = 100; 
+    int w_evng = 10;
+    int w_5xx = 10;
+
+    final boolean remove_tue_11_slot = true; // if true we remove the tuesday at 11:00 - 12:30 lecture slot if it is found
 
     // INPUT SCALARS ################################################################################
     // the weights used in the score calculations
@@ -24,19 +32,15 @@ public class Environment
     // max iterations
     int max_iterations;
     // time limit in seconds
-    long time_limit; 
+    double time_limit; 
 
     // RECORD ############################################################################################
-    // the current execution time since the start of the search
-    long current_time = 0;
-    // the start time (needed for measuring time since timer does not start at zero)
-    long start_time = 0;
-    // the number of iterations used so far
-    int iterations = 0;
     // the best solution found so far
     Problem best_sol;
     // the score of the best solution found so far
     int best_score = 2000000000;
+    // indicate if a solution has been found at all
+    boolean solution_found = false;
 
     // Environment DATA #####################################################################################
     String dataset_name;
@@ -72,6 +76,17 @@ public class Environment
     int[][] tutslot_lecslot;
     // index is the lecture slot id, value is the corresponding tutorial slot
     int[][] lecslot_tutslot;
+    // array in sorted order of the lecturs and totorials by their constraints (lookup by depth if done right)
+    LecOrTutId[] constraint_ordering;
+
+    // lookup lecture ids of lectures that a scheduled at the exact same time as a given tutorial
+    int[] tutid_to_lecid;
+
+    // this is the total preference value, the preference score of a selected slot is simply removed from this sum
+    int total_pref_sum = 0;
+
+    // this is the slot id of the tuesday 11:00 am lecture slot if it is found, -1 if not found
+    int tue_11_slot_id = -1;
 
     public Environment()
     {
@@ -89,7 +104,7 @@ public class Environment
      * @param _max_iterations
      * @param _time_limit
      */ 
-    public void SetWeights(int _w_minfilled, int _w_pref, int _w_pair, int _w_secdiff, int _pen_lecturemin, int _pen_tutorialmin, int _pen_notpaired, int _pen_section, int _max_iterations, int _time_limit)
+    public void SetWeights(int _w_minfilled, int _w_pref, int _w_pair, int _w_secdiff, int _pen_lecturemin, int _pen_tutorialmin, int _pen_notpaired, int _pen_section, int _max_iterations, int _time_limit, int start_bound)
     {
         w_minfilled = _w_minfilled;
         w_pref = _w_pref;
@@ -100,6 +115,273 @@ public class Environment
         pen_notpaired = _pen_notpaired;
         pen_section = _pen_section;
         max_iterations = _max_iterations;
-        time_limit = ((int)_time_limit) * 1000000000;
+        time_limit = (double)_time_limit;
+        best_score = start_bound;
+    }
+
+    /**
+     * Should be called after all environment data is given to the environment and before the search is run
+     * This function sorts the lectures and tutorials based on priority and creates the array for sort order
+     */
+    public void SetupEnvironment()
+    {
+        CreateConstraintRankList();
+        SumPreferences();
+        CreateTutIDtoLecIDmap();
+    }
+
+    /**
+     * calculate the best score that can possibly be achived
+     */
+    public int BestPossibleScore()
+    {
+        int max = total_pref_sum;
+        // total preference sum - best preferences
+        for(int i = 0; i < lectures.length; i++)
+        {
+            max -= lectures[i].first_choice;
+        }
+
+        for(int i = 0; i < tutorials.length; i++)
+        {
+            max -= tutorials[i].first_choice;
+        }
+
+        return max;
+    }
+
+    /**
+     * create a list of lecture/tutorial ids ordered by their constraint rank
+     */
+    private void CreateConstraintRankList()
+    {
+        // array for storing the ids of all lectures and tutorials
+        ArrayList<LecOrTutId> lectures_tutorials = new ArrayList<LecOrTutId>();
+
+        // put all lectures and tutorials into this array
+        for(int i = 0; i < lectures.length; i++)
+        {
+            LecOrTutId temp = new LecOrTutId();
+            temp.is_lec = true;
+            temp.id = lectures[i].id; // id and i should be the same
+            // calculate the rank of this lecture
+            temp.rank_value = CalculateLectureRank(lectures[i]); 
+            lectures_tutorials.add(temp);
+        }
+
+        // put all the tutorials input this array
+        for(int i = 0; i < tutorials.length; i++)
+        {
+            LecOrTutId temp = new LecOrTutId();
+            temp.is_lec = false;
+            temp.id = tutorials[i].id;
+
+            // calculate the rank of this tutorial
+            temp.rank_value = CalculateTutorialRank(tutorials[i]);
+            lectures_tutorials.add(temp);
+        }
+
+        // quick!!! sort the list
+        Collections.sort(lectures_tutorials, new ConstraintComparator());
+
+        // now put the sorted list into the environments array
+        constraint_ordering = new LecOrTutId[num_lectures + num_tutorials];
+        
+        // copy the list
+        for(int i = 0; i < constraint_ordering.length; i++)
+        {
+            constraint_ordering[i] = lectures_tutorials.get(i);
+        }
+    }
+
+    /**
+     * calculate the rank value of a lecture
+     */
+    private int CalculateLectureRank(Lecture lec)
+    {
+        // sum the values of things that contribute to the constraint rank of the lecture
+        int value = 0;
+        // check for evening
+        if(lec.is_evng)
+        {
+            value += w_evng;
+        }
+
+        // check for active learning
+        if(lec.is_al)
+        {
+            value += w_al;
+        }
+
+        // check for 5xx level course
+        if(lec.is_5xx)
+        {
+            value += w_5xx;
+        }
+        
+        // count number of occurances in not compatible, unwanted, sections, and parent child tutorials
+        // not compatible
+        value += lec.not_compatible_tut.size();
+        // unwanted
+        value += lec.unwanted.size();
+        // sections
+        value += sections.get(lec.section).length;
+        // number of child tutorials
+        value += lec.tutorials.length;
+
+        return value;
+    }
+
+    /**
+     * calculate the rank value of a tutorial
+     */
+    private int CalculateTutorialRank(Tutorial tut)
+    {
+        // sum the values of things that contribute to the constraint rank of the lecture
+        int value = 0;
+        // check for evening
+        if(tut.is_evng)
+        {
+            value += w_evng;
+        }
+
+        // check for active learning
+        if(tut.is_al)
+        {
+            value += w_al;
+        }
+        
+        // count number of occurances in not compatible, unwanted, and parent lectures
+        // not compatible
+        value += tut.not_compatible_tut.size();
+        // unwanted
+        value += tut.unwanted.size();
+        // number of child tutorials
+        value += tut.parent_lectures.length;
+
+        return value;
+    }
+
+    private void SumPreferences()
+    {
+        // sum the preference values
+        total_pref_sum = 0;
+        // preference values for lectures 
+        for(int i = 0; i < lectures.length; i++)
+        {
+            // also record the first choice of this lecture
+            int first = 0;
+
+            for(Integer value : lectures[i].preferences.values())
+            {
+                if(value > first)
+                {
+                    first = value;
+                }
+                total_pref_sum += value;
+            }
+
+            lectures[i].first_choice = first;
+        }
+        // preference values for tutorials
+        for(int i = 0; i < tutorials.length; i++)
+        {
+            // also record the first choice of this tutorial
+            int first = 0;
+            for(Integer value : tutorials[i].preferences.values())
+            {
+                if(value > first)
+                {
+                    first = value;
+                }
+                total_pref_sum += value;
+            }
+
+            tutorials[i].first_choice = first;
+        }    
+    }
+
+    private void CreateTutIDtoLecIDmap()
+    {
+        // initialize the array
+        tutid_to_lecid = new int[tut_slots_array.length];
+
+        // loop through all tutorials and see if there is a corresponding lecture slot at the same time
+        for(int i = 0; i < tut_slots_array.length; i++)
+        {
+            if(lecture_slots.containsKey(tut_slots_array[i].lec_hash))
+            {
+                tutid_to_lecid[i] = lecture_slots.get(tut_slots_array[i].lec_hash).id;
+            }
+            else
+            {
+                tutid_to_lecid[i] = -1;
+            }
+        }
     }
 }
+
+/**
+ * implements the comparison based on the number of constraints on a lecture or tutorial
+ */
+class ConstraintComparator implements Comparator<LecOrTutId>
+{
+    /**
+     * implements the sorting function for comparator
+     * @param a the first object to be compared.
+     * @param b the second object to be compared.
+     * @return 1 if a should appear above b, 0 if they are equal, -1 otherwise
+     */
+    public int compare(LecOrTutId a, LecOrTutId b)
+    {
+        // sort by the following priorities
+        // 1. evening lectures/tutorials are ranked first, tie break on ordering
+        // 2. active learning lectures/tutorials are ranked first, tie break on ordering
+        // 3. 5xx level lectures are ranked first, tie break on ordering
+        // 4. number of occurances in notCompatible, Unwanted, Sections, and parent lectures/ child tutorails
+        
+        // sort based on rank
+        if(a.rank_value > b.rank_value)
+        {
+            return -1;
+        }
+        else if(a.rank_value < b.rank_value)
+        {
+            return 1;
+        }
+        
+        // if same rank, then lectures first
+        if(a.is_lec && !b.is_lec)
+        {
+            return -1;
+        }
+        else if(!a.is_lec && b.is_lec)
+        {
+            return 1;
+        }
+
+        // if same rank and same type, then they will have different id
+        if(b.id > a.id)
+        {
+            return -1;
+        }
+        else
+        {
+            return 1;
+        }
+    }
+}
+
+/**
+ * holds a lecture or tutorial id
+ */
+class LecOrTutId
+{
+    // is this a lecture id
+    boolean is_lec = false;
+    // the id of the lecture or tutorial
+    int id = -1;
+    // the value representing the constraint rank
+    int rank_value = 0;
+}
+
